@@ -2135,3 +2135,24 @@ body.embed{ padding-top:16px; }
   .game-ritmo .game-hud > span{ padding:6px 10px; font-size:.8rem; }
   .game-ritmo .game-instrucciones{ font-size:.84rem; }
 }
+
+
+.game-ritmo .game-tablero{ min-height:0; padding:8px; }
+.game-ritmo .leyenda-items{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:6px;
+  margin-bottom:8px;
+}
+.game-ritmo .leyenda-item{
+  justify-content:flex-start;
+  min-width:0;
+  gap:5px;
+  padding:4px 8px;
+  text-align:left;
+}
+.game-ritmo .leyenda-emoji{ font-size:1rem; }
+.game-ritmo .leyenda-texto{ font-size:.76rem; line-height:1.2; }
+.game-ritmo .ritmo-barra{ height:24px; margin:10px 0 8px; }
+.game-ritmo .ritmo-marcador{ top:-7px; height:38px; }
+.game-ritmo .game-btn-empezar{ padding:9px 22px; }
