@@ -73,7 +73,7 @@
 
         <div id="recovery-panel" class="hidden">
           <h2>Recupera tu cuenta</h2>
-          <p class="hint">Te enviaremos un enlace si encontramos una cuenta con ese correo.</p>
+          <p class="hint">Si encontramos una cuenta y el correo está configurado, enviaremos un enlace para cambiar la contraseña.</p>
           <div class="error-msg" id="recovery-error"></div>
           <div class="success-msg" id="recovery-success" role="status"></div>
           <div class="field"><label for="recovery-email">Correo de tu cuenta</label><input id="recovery-email" type="email" placeholder="tu@correo.com" autocomplete="email"></div>
@@ -670,7 +670,8 @@ conectada a MySQL. Sin ese backend, Alyra muestra un error y no guarda localment
         .then(function (d) {
           currentUser = d.usuario;
           enterApp();
-          showToast(d.correoBienvenidaEnviado ? "Cuenta creada. Revisa tu correo 🌱" : "Cuenta creada. El correo de bienvenida está pendiente de configuración.");
+          var esRegistroNuevo = (d.mensaje || "").indexOf("¡Cuenta creada!") === 0;
+          showToast(esRegistroNuevo ? (d.correoBienvenidaEnviado ? "Cuenta creada. Revisa tu correo 🌱" : "Cuenta creada. El correo de bienvenida está pendiente de configuración.") : (d.mensaje || "¡Bienvenida a Alyra!"));
         })
         .catch(function (e) { showError("signup-error", e.message); });
     }
