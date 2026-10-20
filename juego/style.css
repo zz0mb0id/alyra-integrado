@@ -2097,3 +2097,41 @@ body.embed{ padding-top:16px; }
 .embed .subtitle,
 .embed .footer-note{ display:none; }
 
+
+
+/* Trepa el árbol: instrucciones y tablero caben mejor en ventanas bajas o móviles. */
+.overlay.game-ritmo{ padding:10px; }
+.game-ritmo .game-journal{
+  width:min(100%, 520px);
+  max-height:calc(100vh - 20px);
+  max-height:calc(100dvh - 20px);
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  padding:20px 24px 18px;
+}
+.game-ritmo .game-titulo{
+  margin:4px 36px 4px;
+  font-size:1.35rem;
+}
+.game-ritmo .game-instrucciones{
+  margin-bottom:10px;
+  font-size:.88rem;
+  line-height:1.45;
+}
+.game-ritmo .game-hud{ margin-bottom:8px; }
+.game-ritmo .game-tablero{
+  min-height:142px;
+  padding:10px;
+}
+.game-ritmo .ritmo-barra{ margin:18px 0 16px; }
+.game-ritmo .game-btn-empezar{
+  margin-top:6px;
+  padding:11px 26px;
+}
+
+@media (max-width:480px){
+  .game-ritmo .game-journal{ padding:18px 16px 16px; }
+  .game-ritmo .game-hud{ flex-direction:row; align-items:center; }
+  .game-ritmo .game-hud > span{ padding:6px 10px; font-size:.8rem; }
+  .game-ritmo .game-instrucciones{ font-size:.84rem; }
+}
