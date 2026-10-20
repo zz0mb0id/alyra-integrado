@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alyra — Diario de campo viviente</title>
+
+<!--
+  ============================================================================
+  index.html — VERSIÓN ESTÁTICA DEL JUEGO (sin PHP ni MySQL)
+  ============================================================================
+  Es la gemela de index.php. Misma estructura, mismo CSS y mismo script.js;
+  lo único que cambia es el "puente" del final: en vez de que PHP inyecte el
+  progreso desde MySQL, aquí lo lee el navegador desde localStorage.
+
+  ¿Para qué sirve? Para publicar el juego en un hosting estático
+  (Vercel, GitHub Pages) donde no se puede ejecutar PHP.
+
+  index.php sigue en el repositorio y es la versión con base de datos real,
+  que es la que corre en un servidor con Apache + MySQL.
+  ============================================================================
+-->
+
+<!-- Tipografías del diseño -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Hanken+Grotesk:wght@400;500;600;700&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
+
+<!-- Sistema de diseño compartido con la página principal de Alyra -->
+<link rel="stylesheet" href="../herbario.css">
+<!-- Todo el CSS vive en style.css (separado del HTML) -->
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="grano">
+
+  <!-- ============================================================
+       ENCABEZADO
+  ============================================================= -->
+  <p class="eyebrow">Diario de campo interactivo</p>
+  <h1>Alyra</h1>
+  <p class="subtitle">Recorre las regiones de Colombia, observa a sus especies moverse en su hábitat y juega el minijuego de cada una para mantener sano el ecosistema. ¡La salud empieza en 0: tú decides si sube!</p>
+
+  <!-- Barra de sesión: el puente de más abajo decide si empieza visible,
+       según si ya hay una cuenta guardada en este navegador. -->
+  <div class="sesion-bar" id="sesionBar">
+    <span>👤 Jugando como <b id="sesionNombre"></b></span>
+    <a href="#" class="logout-link">Cerrar sesión</a>
+  </div>
+
+  <!-- Aviso para quien juega sin cuenta (crear una es opcional) -->
+  <div class="sesion-bar" id="invitadoBar">
+    <span>Jugando sin cuenta: tu avance no se guarda</span>
+    <a href="#" class="logout-link" id="abrirRegistro" style="color:var(--forest-deep);">Crear cuenta</a>
+  </div>
+
+  <!-- ============================================================
+       BARRA DE SALUD GENERAL DEL ECOSISTEMA
+       El ancho/porcentaje lo actualiza script.js cada vez que
+       cambia la salud de cualquier especie.
+  ============================================================= -->
+  <div class="vine-wrap">
+    <div class="vine-label"><span>🌱 Salud del ecosistema colombiano</span><span id="vinePercent">0%</span></div>
+    <div class="vine-track"><div class="vine-fill" id="vineFill"></div></div>
+    <p class="vine-msg" id="vineMsg">Aún no has cuidado ninguna especie. ¡Juega los minijuegos para subir la salud!</p>
+  </div>
+
+  <!-- Aquí script.js dibuja una sección por cada región y, dentro de
+       cada una, los animales y plantas que le pertenecen. -->
+  <div class="mapa" id="mapa"></div>
+
+  <button class="reset-btn" id="resetBtn">↺ Reiniciar diario (solo en este navegador)</button>
+  <p class="footer-note">Juego educativo sobre los ecosistemas de Colombia — 6 regiones, 19 especies y 8 minijuegos.</p>
+
+  <!-- ============================================================
+       VENTANA EMERGENTE: DIARIO DE UNA ESPECIE
+       La llena renderJournal() en script.js al tocar una criatura.
+  ============================================================= -->
+  <div class="overlay" id="overlay">
+    <div class="journal">
+      <button class="journal-close" id="closeBtn" aria-label="Cerrar">✕</button>
+      <div class="journal-head">
+        <div class="journal-emoji" id="jEmoji">🦅</div>
+        <div>
+          <p class="journal-title" id="jName">Nombre</p>
+          <p class="journal-region" id="jRegion">Región</p>
+          <p class="journal-sub" id="jStatus">Estado</p>
+        </div>
+      </div>
+
+      <div class="health-bar-wrap">
+        <div class="health-bar-track"><div class="health-bar-fill" id="jHealthFill"></div></div>
+        <p class="health-num" id="jHealthNum">Salud: 0/100</p>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="datos">Dato curioso</button>
+        <button class="tab-btn" data-tab="cuidado">Cómo cuidarlo</button>
+        <button class="tab-btn" data-tab="riesgo">Si desaparece</button>
+      </div>
+      <div class="tab-panel active" data-panel="datos" id="panelDatos"></div>
+      <div class="tab-panel" data-panel="cuidado" id="panelCuidado"></div>
+      <div class="tab-panel" data-panel="riesgo" id="panelRiesgo"></div>
+      <div id="extinctBanner"></div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       VENTANA EMERGENTE: MINIJUEGO
+       Su contenido lo arma script.js según el tipo de minijuego
+       que le toque a la especie activa (son 8 tipos distintos).
+  ============================================================= -->
+  <div class="overlay" id="gameOverlay">
+    <div class="journal game-journal">
+      <button class="journal-close" id="gameCloseBtn" aria-label="Cerrar minijuego">✕</button>
+      <p class="game-titulo" id="gameTitulo">Minijuego</p>
+      <p class="game-instrucciones" id="gameInstrucciones"></p>
+
+      <div class="game-hud">
+        <span>⏱️ <b id="gameTiempo">15</b>s</span>
+        <span><span id="gameMetricLabel">⭐ Puntos:</span> <b id="gamePuntos">0</b> / <span id="gameMeta">40</span></span>
+      </div>
+
+      <div class="game-tablero" id="gameTablero"></div>
+
+      <div class="game-resultado" id="gameResultado"></div>
+      <button class="game-btn-empezar" id="gameEmpezarBtn">▶ Empezar</button>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       VENTANA EMERGENTE: CREAR CUENTA DE GUARDIÁN
+       En esta versión la cuenta se guarda en el propio navegador.
+  ============================================================= -->
+  <div class="overlay registro-overlay" id="registroOverlay">
+    <div class="journal registro-journal">
+      <button type="button" class="journal-close" id="registroCerrar" aria-label="Cerrar">✕</button>
+      <p class="registro-emoji">🌎</p>
+      <p class="journal-title" style="text-align:center;">Crea tu cuenta de guardián</p>
+      <p class="registro-sub">Es opcional: puedes jugar sin cuenta, pero con una cuenta tu progreso se guarda en este navegador para volver otro día a seguir cuidando el ecosistema.</p>
+
+      <form id="registroForm" autocomplete="off">
+        <label class="registro-label" for="campoUsuario">Nombre de guardián</label>
+        <input class="registro-input" type="text" id="campoUsuario" name="nombre_usuario" minlength="3" maxlength="40" required placeholder="Ej: Guardian_Andino">
+
+        <label class="registro-label" for="campoCorreo">Correo</label>
+        <input class="registro-input" type="email" id="campoCorreo" name="correo" required placeholder="tucorreo@ejemplo.com">
+
+        <label class="registro-label" for="campoContrasena">Contraseña</label>
+        <input class="registro-input" type="password" id="campoContrasena" name="contrasena" minlength="4" required placeholder="Mínimo 4 caracteres">
+
+        <p class="registro-error" id="registroError"></p>
+        <button type="submit" class="registro-submit" id="registroSubmit">Registrarme y empezar a jugar</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <!-- ============================================================
+       PUENTE NAVEGADOR -> JAVASCRIPT
+       Es el equivalente del puente PHP de index.php, pero leyendo de
+       localStorage en vez de MySQL. script.js consume exactamente las
+       mismas constantes, así que no necesita saber en qué modo está
+       más allá de MODO_ESTATICO.
+  ============================================================= -->
+  <script>
+    // Le avisa a script.js que no hay PHP detrás: debe guardar en el navegador.
+    const MODO_ESTATICO = true;
+
+    // ?embed=1 -> el juego se muestra dentro de la página principal de Alyra,
+    // que ya tiene su propio título y logo. Esta clase los oculta (ver style.css).
+    if (new URLSearchParams(location.search).has('embed')) {
+      document.body.classList.add('embed');
+    }
+
+    // ---- Cuenta guardada en este navegador (si existe) ----
+    let _cuenta = null;
+    try { _cuenta = JSON.parse(localStorage.getItem('alyra_guardian') || 'null'); }
+    catch (e) { _cuenta = null; }
+
+    const JUGADOR_LOGUEADO = !!(_cuenta && _cuenta.nombre);
+    const NOMBRE_JUGADOR   = JUGADOR_LOGUEADO ? _cuenta.nombre : '';
+
+    // ---- Progreso guardado: especie_id => {salud, extinto} ----
+    let PROGRESO_INICIAL = {};
+    try { PROGRESO_INICIAL = JSON.parse(localStorage.getItem('alyra_progreso') || '{}') || {}; }
+    catch (e) { PROGRESO_INICIAL = {}; }
+
+    // Deja las barras de sesión en el estado correcto antes de que corra el juego.
+    if (JUGADOR_LOGUEADO) {
+      document.getElementById('sesionNombre').textContent = NOMBRE_JUGADOR;
+      document.getElementById('sesionBar').classList.add('visible');
+    } else {
+      document.getElementById('invitadoBar').classList.add('visible');
+    }
+  </script>
+
+  <!-- Todo el JavaScript del juego vive en script.js (el mismo de index.php) -->
+  <script src="script.js"></script>
+</body>
+</html>
+

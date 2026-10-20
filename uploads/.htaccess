@@ -1,0 +1,19 @@
+# =============================================================================
+# uploads/ — carpeta de fotos y videos subidos por la comunidad
+# =============================================================================
+# Estos archivos los sube cualquier persona con sesión, así que hay que
+# tratarlos como potencialmente peligrosos:
+#
+# 1. Nada de scripts: aunque alguien lograra colar un .php con nombre raro,
+#    Apache no lo ejecuta aquí — lo sirve como texto plano o lo rechaza.
+# 2. Sin listado de directorio: index.html de esta carpeta está vacío, así
+#    que visitar /uploads/ no revela los nombres de los archivos.
+#
+# Si tu hosting diera un error 500 por este archivo (pasa solo si AllowOverride
+# está muy restringido), bórralo: la app sigue funcionando, solo pierdes esta
+# capa extra de seguridad.
+# =============================================================================
+<FilesMatch "\.(php|phtml|phar|php[0-9]*|pl|py|cgi|sh|shtml)$">
+  Require all denied
+</FilesMatch>
+

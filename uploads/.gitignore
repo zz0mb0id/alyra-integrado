@@ -1,0 +1,6 @@
+# Lo que sube la comunidad no va al repositorio: son archivos de usuarios.
+*
+!.htaccess
+!index.html
+!.gitignore
+

@@ -1,0 +1,2087 @@
+/* =============================================================================
+   style.css — Alyra · Diario de campo viviente (el juego)
+   =============================================================================
+   Este archivo SOLO tiene apariencia. La estructura vive en index.php y el
+   comportamiento en script.js.
+
+   DIRECCIÓN DE ARTE: CUADERNO DE CAMPO LUMINOSO.
+   Papel crema claro, acuarela pastel, serif cálido (Fraunces), formas
+   redondeadas y amables, sombras difusas en capas y mucha animación suave.
+   Las formas orgánicas asimétricas (blobs, cantos rodados) se usan como
+   ACENTO puntual —medallones, manchas de acuarela, piedras del sendero—,
+   nunca como lenguaje general: la interfaz es redonda y amable, no deforme.
+
+   Por eso aquí NO hay nada de lo anterior:
+     · sombras duras con desplazamiento sólido,
+     · bordes negros gruesos,
+     · tipografías de cartel ni mayúsculas agresivas,
+     · botones que se "hunden" al hacer clic (eso se siente a arcade).
+   Todo se eleva y se posa con la curva --ease-suave.
+
+   Los colores, sombras, radios, tipografías y animaciones vienen del sistema
+   compartido ../herbario.css, que index.php carga ANTES que este archivo.
+   Aquí casi no se inventan valores: se combinan los que ya existen.
+
+   Orden de las secciones (sigue el orden del HTML):
+     1.  Puente de variables (nombres viejos -> tokens del herbario)
+     2.  Base, encabezado y barra de sesión
+     3.  Barra de salud del ecosistema
+     4.  Mapa: las seis regiones pintadas a la acuarela
+     5.  Criaturas y medallones de espécimen
+     6.  Ventanas de papel: overlay, diario y pestañas
+     7.  Minijuego: marco común (título, HUD, tablero, resultado)
+     8.  Las ocho mecánicas de minijuego
+     9.  Sensación de juego: cuenta regresiva, racha, partículas, leyenda
+     10. Ventana de registro
+     11. Avisos, utilidades y responsive
+     12. Modo incrustado (?embed=1)
+   ========================================================================== */
+
+/* Las tipografías (Fraunces, Hanken Grotesk y Caveat) las pide index.php
+   directamente a Google Fonts, junto con herbario.css. Aquí solo se usan
+   a través de los tokens --f-display / --f-texto / --f-mano. */
+
+
+/* =============================================================================
+   1. PUENTE DE VARIABLES
+   =============================================================================
+   Muchas reglas de este archivo (y algunos colores que script.js escribe
+   directamente, como healthColor()) usan los nombres antiguos: --paper,
+   --ink, --forest… En vez de renombrarlos uno por uno, los volvemos a
+   definir APUNTANDO a los tokens del herbario. Así el cambio de paleta es
+   total aunque el nombre siga siendo el de antes.
+   ========================================================================== */
+:root{
+  /* Papel y tinta */
+  --paper:       var(--papel);        /* fondo de fichas y tarjetas       */
+  --paper-dark:  var(--papel-3);      /* papel en sombra, fondo de barras */
+  --ink:         var(--tinta);        /* marrón tinta, nunca negro        */
+
+  /* Verdes */
+  --forest:      var(--hoja-700);
+  --forest-deep: var(--hoja-900);
+  --moss:        var(--hoja-500);
+
+  /* Tierras y barro */
+  --clay:        var(--tierra-500);
+  --clay-deep:   var(--tierra-700);
+
+  /* Semánticos: alerta, agua, polen */
+  --brick:       var(--mal);
+  --teal:        var(--agua-700);
+  --gold:        var(--miel-500);
+
+  /* Texto secundario, usado en notas y pies de página */
+  --texto-2:     var(--tinta-soft);
+  --texto-3:     var(--tinta-tenue);
+}
+
+*{ box-sizing:border-box; }
+
+/* Los <button> del navegador no heredan ni la letra ni el color del texto.
+   Como medio juego está hecho de botones (cartas, piedras, cestas, items),
+   se los damos de una vez para que todo hable con la misma voz. */
+button{ font-family:inherit; color:inherit; }
+
+
+/* =============================================================================
+   2. BASE, ENCABEZADO Y BARRA DE SESIÓN
+   ========================================================================== */
+
+/* El fondo es papel crema con dos aguadas enormes y muy diluidas (verde
+   abajo, miel arriba). Van `fixed` para que el papel no se "mueva" al hacer
+   scroll: la página entera parece apoyada sobre una sola lámina. */
+body{
+  margin:0;
+  min-height:100vh;
+  padding:26px 16px 64px;
+  color:var(--tinta);
+  font-family:var(--f-texto);
+  font-size:16px;
+  line-height:1.55;
+  background-color:var(--papel);
+  background-image:
+    radial-gradient(120% 70% at 10% 100%, rgba(191,220,175,.34) 0%, rgba(191,220,175,0) 60%),
+    radial-gradient(100% 62% at 92% -4%,  rgba(244,222,156,.34) 0%, rgba(244,222,156,0) 62%);
+  background-attachment:fixed;
+  background-repeat:no-repeat;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* "Diario de campo interactivo": nota escrita a mano sobre la lámina. */
+.eyebrow{
+  font-family:var(--f-mano);
+  font-size:1.22rem;
+  color:var(--tierra-700);
+  text-align:center;
+  margin:0 0 2px;
+  transform:rotate(-1.2deg);          /* apoyada a mano, no a escuadra */
+  animation:brote .7s var(--ease-suave) both;
+}
+
+h1{
+  font-family:var(--f-display);
+  font-optical-sizing:auto;
+  font-weight:600;
+  text-align:center;
+  color:var(--hoja-900);
+  font-size:clamp(2.1rem, 6vw, 3.3rem);
+  line-height:1.05;
+  letter-spacing:-.01em;
+  margin:0 0 10px;
+  animation:brote .7s var(--ease-suave) .06s both;
+}
+
+/* Filete decorativo bajo el título: una hojita de tinta que se balancea. */
+h1::after{
+  content:"";
+  display:block;
+  width:78px; height:10px;
+  margin:13px auto 0;
+  border-radius:var(--r-hoja);
+  background:linear-gradient(100deg, var(--hoja-500), var(--hoja-300));
+  animation:balanceo 7s ease-in-out infinite;
+}
+
+.subtitle{
+  text-align:center;
+  max-width:630px;
+  margin:0 auto 24px;
+  color:var(--tinta-soft);
+  font-size:.98rem;
+  line-height:1.65;
+  animation:brote .7s var(--ease-suave) .12s both;
+}
+
+/* .sesion-bar: franja con "Jugando como <nombre>". Nace oculta y solo se ve
+   con la clase .visible, que pone PHP (si ya hay sesión) o script.js (tras
+   un registro correcto). Es una píldora de papel, redonda y amable. */
+.sesion-bar{
+  display:none;
+  max-width:440px;
+  margin:0 auto 18px;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  padding:9px 20px;
+  font-size:.86rem;
+  color:var(--hoja-900);
+  background:var(--papel);
+  border:1px solid var(--linea);
+  border-radius:var(--r-pastilla);
+  box-shadow:var(--sombra-sm);
+}
+.sesion-bar.visible{ display:flex; animation:brote .6s var(--ease-suave) both; }
+
+.logout-link{
+  color:var(--tierra-700);
+  font-weight:600;
+  font-size:.82rem;
+  text-decoration:none;
+  border-bottom:1px solid transparent;
+  transition:border-color .35s var(--ease-suave), color .35s var(--ease-suave);
+}
+.logout-link:hover{ color:var(--mal); border-bottom-color:currentColor; }
+
+
+/* =============================================================================
+   3. BARRA DE SALUD DEL ECOSISTEMA
+   =============================================================================
+   Es el promedio de todas las especies. script.js cambia el ancho de
+   .vine-fill y el texto de .vine-msg.
+   ========================================================================== */
+.vine-wrap{
+  max-width:720px;
+  margin:0 auto 32px;
+  padding:16px 22px 15px;
+  background:var(--papel);
+  border:1px solid var(--linea);
+  border-radius:var(--r-grande);
+  box-shadow:var(--sombra-md);
+  animation:brote .7s var(--ease-suave) .18s both;
+}
+
+.vine-label{
+  display:flex;
+  justify-content:space-between;
+  align-items:baseline;
+  gap:10px;
+  font-size:.86rem;
+  font-weight:600;
+  color:var(--hoja-900);
+  margin-bottom:9px;
+}
+/* El porcentaje, en el serif de lámina, se lee como un dato medido. */
+.vine-label span:last-child{
+  font-family:var(--f-display);
+  font-weight:600;
+  font-size:1.1rem;
+  color:var(--hoja-700);
+}
+
+/* El riel es el surco de tierra; el relleno, el tallo que lo recorre. */
+.vine-track{
+  position:relative;
+  overflow:hidden;
+  height:26px;
+  background:var(--papel-3);
+  border-radius:var(--r-pastilla);
+  box-shadow:inset 0 1px 3px rgba(58,46,32,.10);
+}
+.vine-fill{
+  height:100%;
+  width:0%;
+  border-radius:var(--r-pastilla);
+  background:linear-gradient(90deg,
+    var(--tierra-500) 0%,
+    var(--miel-500) 36%,
+    var(--hoja-500) 70%,
+    var(--hoja-700) 100%);
+  transform-origin:left center;
+  /* creceBarra se dispara al cargar; el `transition` hace el resto cada vez
+     que script.js cambia el ancho. */
+  animation:creceBarra 1.1s var(--ease-suave) both;
+  transition:width 1.1s var(--ease-suave);
+}
+/* Un destello lento cruza la barra: el ecosistema "respira" luz. */
+.vine-track::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  width:34%;
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,.65), transparent);
+  animation:brilloPasa 6s var(--ease-suave) 1.5s infinite;
+  pointer-events:none;
+}
+
+.vine-msg{
+  margin:11px 0 0;
+  min-height:1.3em;
+  font-family:var(--f-mano);
+  font-size:1.12rem;
+  color:var(--tinta-soft);
+}
+
+
+/* =============================================================================
+   4. MAPA: LAS SEIS REGIONES PINTADAS A LA ACUARELA
+   =============================================================================
+   Cada región es una aguada: capas de radial-gradient muy difusas sobre
+   papel claro, más un detalle de paisaje dibujado con un pseudo-elemento
+   (montañas, dosel, olas, sol, isla, lluvia).
+
+   Lógica de la paleta (cada paisaje real presta su color):
+     Andina     -> niebla y roca: cielo pálido + verde claro + bruma blanca
+     Caribe     -> mar turquesa y arena: agua + miel (la playa)
+     Pacífico   -> selva mojada: verde medio + velos de lluvia que caen
+     Amazonía   -> dosel denso: verdes profundos con claros de luz dorada
+     Orinoquía  -> llanura dorada: miel y tierra bajo un cielo enorme
+     Insular    -> océano abierto: agua intensa con una isla de arena
+
+   script.js aplica además un filter de grises según la salud de la región:
+   cuanto más enferma, más se destiñe la acuarela. Por eso la transición del
+   filter es muy larga: se apaga despacio, como pintura que pierde color.
+   ========================================================================== */
+.mapa{
+  max-width:1000px;
+  margin:0 auto;
+  display:flex;
+  flex-direction:column;
+  gap:26px;
+}
+
+.zona{
+  position:relative;
+  overflow:hidden;
+  min-height:210px;
+  padding:16px 18px 12px;
+  border:1px solid var(--linea);
+  border-radius:var(--r-grande);
+  box-shadow:var(--sombra-md);
+  transition:filter 1.4s var(--ease-suave), box-shadow .6s var(--ease-suave),
+             transform .6s var(--ease-suave);
+  animation:brote .8s var(--ease-suave) both;
+}
+/* Entrada escalonada: las regiones aparecen una tras otra, como manchas de
+   acuarela que se van secando. */
+.zona:nth-child(1){ animation-delay:.05s; }
+.zona:nth-child(2){ animation-delay:.13s; }
+.zona:nth-child(3){ animation-delay:.21s; }
+.zona:nth-child(4){ animation-delay:.29s; }
+.zona:nth-child(5){ animation-delay:.37s; }
+.zona:nth-child(6){ animation-delay:.45s; }
+
+.zona:hover{ transform:translateY(-3px); box-shadow:var(--sombra-lg); }
+
+/* El contenido va por encima del paisaje decorativo del ::before. */
+.zona > *{ position:relative; z-index:1; }
+
+/* Cerco interior aguado: el halo que deja la acuarela al secarse. */
+.zona::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:2;
+  pointer-events:none;
+  border-radius:inherit;
+  box-shadow:inset 0 0 0 1px rgba(253,250,243,.70),
+             inset 0 16px 32px -20px rgba(58,46,32,.18);
+}
+
+/* ---- 4.A Andina: páramo y montañas entre nieblas ---- */
+.zona-andina{
+  background-color:var(--papel-2);
+  background-image:
+    radial-gradient(95% 70% at 50% 110%, rgba(191,220,175,.80) 0%, rgba(191,220,175,0) 66%),
+    radial-gradient(60% 52% at 22% 30%,  rgba(253,250,243,.92) 0%, rgba(253,250,243,0) 70%),
+    radial-gradient(72% 58% at 78% 16%,  rgba(190,220,241,.72) 0%, rgba(190,220,241,0) 72%),
+    radial-gradient(130% 80% at 50% -8%, rgba(232,242,250,.95) 0%, rgba(232,242,250,0) 70%);
+}
+/* Silueta de cordillera recortada con clip-path, muy pálida: queda detrás
+   de la niebla, como la cadena de montañas al fondo del páramo. */
+.zona-andina::before{
+  content:"";
+  position:absolute;
+  left:0; right:0; bottom:0;
+  height:66%;
+  background:linear-gradient(180deg, rgba(138,190,226,.55), rgba(191,220,175,.55));
+  clip-path:polygon(0% 100%, 0% 64%, 13% 40%, 25% 58%, 41% 22%, 55% 52%, 70% 32%, 86% 58%, 100% 42%, 100% 100%);
+  opacity:.8;
+}
+
+/* ---- 4.B Caribe: mar turquesa lamiendo la arena ---- */
+.zona-caribe{
+  background-color:var(--agua-100);
+  background-image:
+    radial-gradient(70% 55% at 16% 24%, rgba(184,225,211,.85) 0%, rgba(184,225,211,0) 72%),
+    radial-gradient(85% 60% at 84% 10%, rgba(134,201,178,.60) 0%, rgba(134,201,178,0) 70%),
+    radial-gradient(130% 70% at 50% 0%, rgba(230,244,238,.95) 0%, rgba(230,244,238,0) 74%);
+}
+/* La playa: una banda de arena con el borde superior ondulado, como la
+   espuma que sube y baja. */
+.zona-caribe::before{
+  content:"";
+  position:absolute;
+  left:0; right:0; bottom:0;
+  height:34%;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(244,222,156,0) 0 15px, rgba(244,222,156,.95) 16px) 0 0/38px 18px repeat-x,
+    linear-gradient(180deg, rgba(244,222,156,.95), rgba(241,201,162,.75));
+  opacity:.9;
+}
+
+/* ---- 4.C Pacífico: selva empapada y velos de lluvia ---- */
+.zona-pacifico{
+  background-color:var(--hoja-100);
+  background-image:
+    radial-gradient(90% 68% at 50% 112%, rgba(94,148,80,.62) 0%, rgba(94,148,80,0) 64%),
+    radial-gradient(62% 54% at 24% 28%,  rgba(143,189,123,.62) 0%, rgba(143,189,123,0) 72%),
+    radial-gradient(80% 60% at 82% 14%,  rgba(190,220,241,.60) 0%, rgba(190,220,241,0) 72%);
+}
+/* Lluvia: hilos diagonales clarísimos que caen en bucle. La animación
+   desplaza el fondo, no el elemento: es más barata y más sutil. */
+.zona-pacifico::before{
+  content:"";
+  position:absolute;
+  inset:-20% 0 0;
+  background-image:repeating-linear-gradient(74deg,
+    rgba(232,242,250,.70) 0 1.5px, rgba(232,242,250,0) 1.5px 13px);
+  animation:lluviaCae 1.6s linear infinite;
+  opacity:.75;
+}
+@keyframes lluviaCae{
+  0%  { background-position:0 0; }
+  100%{ background-position:-52px 180px; }
+}
+
+/* ---- 4.D Amazonía: dosel denso con claros de luz dorada ---- */
+.zona-amazonia{
+  background-color:var(--hoja-300);
+  background-image:
+    radial-gradient(95% 72% at 50% 116%, rgba(58,107,51,.60) 0%, rgba(58,107,51,0) 66%),
+    radial-gradient(55% 48% at 70% 26%,  rgba(244,222,156,.55) 0%, rgba(244,222,156,0) 70%),
+    radial-gradient(70% 58% at 18% 22%,  rgba(94,148,80,.62) 0%, rgba(94,148,80,0) 74%),
+    radial-gradient(130% 80% at 50% -6%, rgba(232,242,224,.85) 0%, rgba(232,242,224,0) 68%);
+}
+/* El dosel: una fila de copas redondas asomando por el borde de arriba. */
+.zona-amazonia::before{
+  content:"";
+  position:absolute;
+  left:0; right:0; top:0;
+  height:52px;
+  background:
+    radial-gradient(circle at 50% 100%, rgba(58,107,51,.45) 0 24px, rgba(58,107,51,0) 25px) 0 0/46px 52px repeat-x,
+    radial-gradient(circle at 50% 100%, rgba(94,148,80,.40) 0 19px, rgba(94,148,80,0) 20px) 23px 10px/46px 52px repeat-x;
+}
+
+/* ---- 4.E Orinoquía: llanura dorada bajo un cielo enorme ---- */
+.zona-orinoquia{
+  background-color:var(--miel-100);
+  background-image:
+    radial-gradient(110% 58% at 50% 118%, rgba(223,164,113,.55) 0%, rgba(223,164,113,0) 60%),
+    radial-gradient(90% 50% at 46% 74%,  rgba(231,196,94,.62) 0%, rgba(231,196,94,0) 70%),
+    radial-gradient(70% 42% at 80% 24%,  rgba(191,220,175,.45) 0%, rgba(191,220,175,0) 72%),
+    radial-gradient(140% 62% at 50% -10%, rgba(190,220,241,.80) 0%, rgba(190,220,241,0) 70%);
+}
+/* El sol bajo del llano, latiendo despacio sobre el horizonte. */
+.zona-orinoquia::before{
+  content:"";
+  position:absolute;
+  right:11%; top:14%;
+  width:62px; height:62px;
+  border-radius:50%;
+  background:radial-gradient(circle,
+    rgba(231,196,94,.90) 0%, rgba(244,222,156,.55) 58%, rgba(244,222,156,0) 72%);
+  animation:respira 7.5s ease-in-out infinite;
+}
+
+/* ---- 4.F Insular: océano abierto con una isla de arena ---- */
+.zona-insular{
+  background-color:var(--agua-300);
+  background-image:
+    radial-gradient(100% 70% at 50% 118%, rgba(42,110,100,.45) 0%, rgba(42,110,100,0) 62%),
+    radial-gradient(66% 52% at 14% 22%,  rgba(134,201,178,.70) 0%, rgba(134,201,178,0) 72%),
+    radial-gradient(130% 72% at 50% -6%, rgba(232,242,250,.90) 0%, rgba(232,242,250,0) 70%);
+}
+/* La isla: una mancha de arena con dos anillos de agua alrededor, como las
+   ondas que deja al romper la marea. Aquí sí vale la forma asimétrica. */
+.zona-insular::before{
+  content:"";
+  position:absolute;
+  left:50%; bottom:8%;
+  width:min(260px, 62%);
+  height:72px;
+  transform:translateX(-50%);
+  border-radius:var(--r-blob);
+  background:linear-gradient(180deg, rgba(253,250,243,.95), rgba(241,201,162,.90));
+  box-shadow:0 0 0 12px rgba(230,244,238,.45),
+             0 0 0 26px rgba(230,244,238,.22);
+}
+
+/* .zona-head: la etiqueta de la lámina. Píldora de papel, apenas torcida
+   como si estuviera pegada a mano, que se endereza al acercarse. */
+.zona-head{
+  display:inline-flex;
+  align-items:center;
+  gap:9px;
+  width:fit-content;
+  padding:6px 18px 6px 13px;
+  background:var(--papel);
+  border:1px solid var(--linea);
+  border-radius:var(--r-pastilla);
+  box-shadow:var(--sombra-sm);
+  transform:rotate(-1deg);
+  transition:transform .5s var(--ease-suave), box-shadow .5s var(--ease-suave);
+}
+.zona:hover .zona-head{ transform:rotate(0deg) translateY(-1px); box-shadow:var(--sombra-md); }
+.zona-head .icon{
+  font-size:1.18rem;
+  line-height:1;
+  display:inline-block;
+  animation:balanceo 5.5s ease-in-out infinite;
+}
+.zona-head .nombre{
+  font-family:var(--f-display);
+  font-optical-sizing:auto;
+  font-weight:600;
+  font-size:1.03rem;
+  color:var(--hoja-900);
+}
+
+/* El aviso de la región es una anotación del naturalista al margen. */
+.zona-msg{
+  margin:8px 0 0 6px;
+  min-height:1.2em;
+  font-family:var(--f-mano);
+  font-size:1.08rem;
+  color:var(--tinta-soft);
+  text-shadow:0 1px 0 rgba(253,250,243,.8);
+  animation:entraDesdeLado .6s var(--ease-suave) both;
+  --desde:-14px;
+}
+
+.habitat{
+  position:relative;
+  width:100%;
+  height:156px;
+}
+
+
+/* =============================================================================
+   5. CRIATURAS Y MEDALLONES DE ESPÉCIMEN
+   =============================================================================
+   Cada especie es un espécimen montado sobre papel, como en una lámina de
+   herbario: un recorte con un aro finísimo teñido del color de su bioma y
+   una sombra difusa que lo despega del paisaje.
+   ========================================================================== */
+
+/* El contenedor invisible que script.js mueve por el hábitat (left/top en %). */
+.criatura{
+  position:absolute;
+  width:0; height:0;
+  left:20%; top:40%;
+  transition:left 3.2s var(--ease-suave), top 3.2s var(--ease-suave);
+}
+
+.criatura-btn{
+  position:relative;
+  transform:translate(-50%,-50%);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:5px;
+  padding:0;
+  background:none;
+  border:none;
+  cursor:pointer;
+  font-family:inherit;
+}
+
+/* .criatura-bob reutiliza `deriva`: flotación lenta, como una hoja sobre
+   agua quieta. Cada especie recibe una duración, un desfase y un --giro
+   distintos para que el mapa no respire todo a la vez. */
+.criatura-bob{
+  display:block;
+  animation:deriva 6.4s ease-in-out infinite;
+}
+.criatura:nth-child(1) .criatura-bob{ animation-duration:6.4s; animation-delay:-.3s;  --giro: 1deg; }
+.criatura:nth-child(2) .criatura-bob{ animation-duration:7.6s; animation-delay:-1.9s; --giro:-1.5deg; }
+.criatura:nth-child(3) .criatura-bob{ animation-duration:5.8s; animation-delay:-3.1s; --giro: 2deg; }
+.criatura:nth-child(4) .criatura-bob{ animation-duration:8.3s; animation-delay:-.9s;  --giro:-2deg; }
+.criatura:nth-child(5) .criatura-bob{ animation-duration:6.9s; animation-delay:-4.2s; --giro: 1.5deg; }
+.criatura:nth-child(6) .criatura-bob{ animation-duration:7.2s; animation-delay:-2.5s; --giro:-1deg; }
+
+/* .medallion: el montaje de papel. --anillo y --halo las redefine cada
+   bioma más abajo, así una sola regla sirve para los seis. */
+.medallion{
+  --anillo:var(--hoja-500);
+  --halo:rgba(143,189,123,.42);
+
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:68px; height:68px;
+  font-size:1.95rem;
+  line-height:1;
+  border-radius:var(--r-blob);          /* acento orgánico: nunca un círculo exacto */
+  background:
+    radial-gradient(circle at 34% 28%, #FFFFFF 0%, var(--papel) 56%, var(--papel-2) 100%);
+  box-shadow:
+    inset 0 0 16px rgba(58,46,32,.05),   /* el papel se hunde apenas        */
+    0 0 0 1px var(--linea),              /* filete del recorte              */
+    0 0 0 6px var(--papel),              /* margen blanco del montaje       */
+    0 0 0 7px var(--anillo),             /* aro teñido del bioma            */
+    0 12px 22px -10px var(--halo),       /* halo de color, muy difuso       */
+    var(--sombra-sm);
+  transition:
+    box-shadow .55s var(--ease-suave),
+    transform .45s var(--ease-brote),
+    filter .9s var(--ease-suave);
+}
+
+/* El emoji va en su propio span para poder presentarlo: lleva su sombrita y
+   es lo único que se voltea cuando la criatura camina hacia la izquierda. */
+.medallion-emoji{
+  display:block;
+  transition:transform .55s var(--ease-suave);
+  filter:drop-shadow(0 2px 3px rgba(58,46,32,.22));
+}
+.criatura.facing-left .medallion-emoji{ transform:scaleX(-1); }
+
+/* Al pasar por encima el espécimen se levanta del papel y se pone a respirar:
+   el halo crece y la sombra se abre. Nunca un desplazamiento seco. */
+.criatura-btn:hover .medallion{
+  transform:translateY(-5px);
+  animation:respira 2.4s ease-in-out infinite;
+  box-shadow:
+    inset 0 0 16px rgba(58,46,32,.04),
+    0 0 0 1px var(--linea),
+    0 0 0 7px var(--papel),
+    0 0 0 9px var(--anillo),
+    0 24px 34px -14px var(--halo),
+    var(--sombra-md);
+}
+.criatura-btn:hover .mini-tag{ transform:translateY(2px); box-shadow:var(--sombra-md); }
+.criatura-btn:focus-visible{ outline:none; }
+.criatura-btn:focus-visible .medallion{
+  transform:translateY(-5px);
+  box-shadow:
+    0 0 0 1px var(--linea),
+    0 0 0 6px var(--papel),
+    0 0 0 9px var(--hoja-700),
+    var(--sombra-md);
+}
+
+/* ---- Aro teñido según el bioma (data-bioma lo escribe script.js) ---- */
+.medallion[data-bioma="andina"]   { --anillo:var(--cielo-500); --halo:rgba(138,190,226,.46); }
+.medallion[data-bioma="caribe"]   { --anillo:var(--agua-500);  --halo:rgba(134,201,178,.46); }
+.medallion[data-bioma="pacifico"] { --anillo:var(--hoja-500);  --halo:rgba(143,189,123,.46); }
+.medallion[data-bioma="amazonia"] { --anillo:var(--hoja-700);  --halo:rgba(94,148,80,.46); }
+.medallion[data-bioma="orinoquia"]{ --anillo:var(--miel-500);  --halo:rgba(231,196,94,.52); }
+.medallion[data-bioma="insular"]  { --anillo:var(--agua-700);  --halo:rgba(78,157,136,.46); }
+
+/* Las plantas usan la otra forma orgánica: se distinguen por silueta además
+   de por color (eso ayuda también a quien no distingue bien los colores). */
+.medallion.planta{
+  border-radius:var(--r-blob-2);
+  --anillo:var(--hoja-500);
+  --halo:rgba(143,189,123,.46);
+}
+
+/* Especie extinta: el espécimen se decolora como una lámina vieja y su aro
+   pasa al color de alerta. Va después de los biomas para poder ganarles. */
+.medallion.extinto{
+  --anillo:var(--mal);
+  --halo:rgba(168,80,60,.34);
+  filter:grayscale(.92) opacity(.70);
+}
+
+/* .mini-tag: el porcentaje de salud, escrito a mano bajo el espécimen. */
+.mini-tag{
+  padding:1px 10px;
+  font-family:var(--f-mano);
+  font-size:.98rem;
+  font-weight:600;
+  white-space:nowrap;
+  color:var(--hoja-900);
+  background:rgba(253,250,243,.94);
+  border:1px solid var(--linea);
+  border-radius:var(--r-pastilla);
+  box-shadow:var(--sombra-sm);
+  transition:transform .45s var(--ease-suave), box-shadow .45s var(--ease-suave);
+}
+.mini-tag.extinto-tag{ color:var(--mal); }
+
+/* .float-pop: el "+10"/"-10" que sube flotando al ganar o perder salud.
+   script.js le pone el color en línea. */
+.float-pop{
+  position:absolute;
+  left:50%; top:-10px;
+  transform:translateX(-50%);
+  font-family:var(--f-mano);
+  font-size:1.35rem;
+  font-weight:700;
+  white-space:nowrap;
+  pointer-events:none;
+  animation:subeFlotando 1.6s var(--ease-suave) forwards;
+}
+@keyframes subeFlotando{
+  0%  { opacity:0; transform:translate(-50%, 6px) rotate(-4deg); }
+  18% { opacity:1; }
+  100%{ opacity:0; transform:translate(-50%, -54px) rotate(5deg); }
+}
+
+
+/* =============================================================================
+   6. VENTANAS DE PAPEL: OVERLAY, DIARIO Y PESTAÑAS
+   =============================================================================
+   Truco útil: cuando el overlay pasa de display:none a display:flex, TODO su
+   contenido vuelve a renderizarse y sus animaciones se reproducen otra vez.
+   Por eso las entradas de aquí dentro (papel, barra de salud, pestañas) se
+   ven cada vez que se abre la ventana, sin necesidad de tocar el JS.
+   ========================================================================== */
+
+/* El velo del fondo es cálido (pardo muy diluido), nunca negro, y desenfoca
+   suavemente lo que hay detrás: la atención cae sobre la hoja abierta. */
+.overlay{
+  position:fixed;
+  inset:0;
+  z-index:50;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:18px;
+  background:rgba(78,62,44,.34);
+  backdrop-filter:blur(4px);
+  -webkit-backdrop-filter:blur(4px);
+}
+.overlay.open{ display:flex; animation:velo .45s var(--ease-suave); }
+@keyframes velo{ from{ opacity:0; } to{ opacity:1; } }
+
+/* .journal: la hoja del diario. Papel con filete tenue, dos aguadas en las
+   esquinas y una sombra en capas que la despega del velo. */
+.journal{
+  position:relative;
+  width:100%;
+  max-width:560px;
+  max-height:88vh;
+  overflow-y:auto;
+  padding:30px 30px 26px;
+  background-color:var(--papel);
+  background-image:
+    radial-gradient(90% 55% at 100% 0%, rgba(244,222,156,.26) 0%, rgba(244,222,156,0) 62%),
+    radial-gradient(80% 50% at 0% 100%, rgba(191,220,175,.24) 0%, rgba(191,220,175,0) 60%);
+  border:1px solid var(--linea);
+  border-radius:var(--r-grande);
+  box-shadow:var(--sombra-xl);
+  animation:aparecePapel .55s var(--ease-brote);
+}
+
+.journal-close{
+  position:absolute;
+  top:15px; right:17px;
+  width:34px; height:34px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:1.05rem;
+  line-height:1;
+  color:var(--tinta-soft);
+  background:var(--papel-2);
+  border:1px solid var(--linea);
+  border-radius:50%;
+  cursor:pointer;
+  transition:background .35s var(--ease-suave), color .35s var(--ease-suave),
+             box-shadow .35s var(--ease-suave), transform .45s var(--ease-suave);
+}
+.journal-close:hover{
+  color:var(--mal);
+  background:var(--papel);
+  transform:rotate(90deg);
+  box-shadow:var(--sombra-sm);
+}
+
+.journal-head{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  padding-bottom:15px;
+  margin-bottom:4px;
+  border-bottom:1px solid var(--linea);
+}
+
+/* El emoji grande del diario también va montado sobre papel, y respira. */
+.journal-emoji{
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:74px; height:74px;
+  font-size:2.5rem;
+  line-height:1;
+  border-radius:var(--r-blob);
+  background:radial-gradient(circle at 34% 28%, #FFFFFF 0%, var(--papel) 58%, var(--papel-2) 100%);
+  box-shadow:inset 0 0 16px rgba(58,46,32,.05),
+             0 0 0 1px var(--linea),
+             0 0 0 6px var(--papel),
+             0 0 0 7px var(--hoja-300),
+             var(--sombra-sm);
+  animation:respira 5.6s ease-in-out infinite;
+}
+
+.journal-title{
+  font-family:var(--f-display);
+  font-optical-sizing:auto;
+  font-weight:600;
+  font-size:1.6rem;
+  line-height:1.15;
+  letter-spacing:-.01em;
+  color:var(--hoja-900);
+  margin:0;
+}
+.journal-region{
+  font-size:.83rem;
+  font-weight:600;
+  color:var(--agua-900);
+  margin:4px 0 0;
+}
+.journal-sub{
+  font-family:var(--f-mano);
+  font-size:1.12rem;
+  color:var(--tierra-700);
+  margin:2px 0 0;
+}
+
+/* ---- 6.A Pestañas del diario: lengüetas redondas de papel ---- */
+.tabs{
+  display:flex;
+  flex-wrap:wrap;
+  gap:7px;
+  margin:18px 0 0;
+  padding-bottom:12px;
+  border-bottom:1px solid var(--linea);
+}
+.tab-btn{
+  padding:8px 17px;
+  font-family:var(--f-texto);
+  font-size:.86rem;
+  font-weight:600;
+  color:var(--tinta-soft);
+  background:var(--papel-2);
+  border:1px solid var(--linea);
+  border-radius:var(--r-pastilla);
+  cursor:pointer;
+  animation:brote .5s var(--ease-suave) both;
+  transition:background .35s var(--ease-suave), color .35s var(--ease-suave),
+             transform .35s var(--ease-suave), box-shadow .35s var(--ease-suave);
+}
+.tab-btn:nth-child(1){ animation-delay:.06s; }
+.tab-btn:nth-child(2){ animation-delay:.12s; }
+.tab-btn:nth-child(3){ animation-delay:.18s; }
+.tab-btn:hover{
+  color:var(--hoja-900);
+  background:var(--papel);
+  transform:translateY(-2px);
+  box-shadow:var(--sombra-sm);
+}
+.tab-btn.active{
+  color:var(--papel);
+  background:linear-gradient(145deg, var(--hoja-700), var(--hoja-900));
+  border-color:transparent;
+  box-shadow:var(--sombra-sm);
+}
+
+.tab-panel{ display:none; font-size:.95rem; line-height:1.65; padding-top:14px; }
+.tab-panel.active{ display:block; animation:brote .5s var(--ease-suave); }
+.tab-panel ul{ padding-left:1.15em; margin:.2em 0 .7em; list-style:none; }
+.tab-panel li{
+  position:relative;
+  margin-bottom:9px;
+  color:var(--tinta);
+  animation:entraDesdeLado .5s var(--ease-suave) both;
+  --desde:-12px;
+}
+.tab-panel li:nth-child(2){ animation-delay:.07s; }
+.tab-panel li:nth-child(3){ animation-delay:.14s; }
+.tab-panel li:nth-child(4){ animation-delay:.21s; }
+.tab-panel li:nth-child(5){ animation-delay:.28s; }
+/* Viñetas botánicas: una hojita de tinta en vez del punto por defecto. */
+.tab-panel li::before{
+  content:"";
+  position:absolute;
+  left:-1.1em; top:.52em;
+  width:10px; height:10px;
+  border-radius:var(--r-hoja);
+  background:var(--hoja-300);
+}
+
+/* ---- 6.B Barra de salud de la especie dentro del diario ---- */
+.health-bar-wrap{ margin:18px 0 6px; }
+.health-bar-track{
+  height:13px;
+  background:var(--papel-3);
+  border-radius:var(--r-pastilla);
+  overflow:hidden;
+  box-shadow:inset 0 1px 3px rgba(58,46,32,.10);
+}
+/* script.js cambia el ancho y el color de fondo (healthColor). La animación
+   creceBarra se reproduce cada vez que se abre el diario. */
+.health-bar-fill{
+  height:100%;
+  border-radius:var(--r-pastilla);
+  transform-origin:left center;
+  animation:creceBarra .95s var(--ease-suave) both;
+  transition:width .9s var(--ease-suave), background .9s var(--ease-suave);
+}
+.health-num{
+  margin-top:7px;
+  font-size:.82rem;
+  color:var(--tinta-soft);
+}
+
+/* ---- 6.C Pestaña "Cómo cuidarlo": invitación al minijuego ---- */
+.feed-hint{
+  margin:0 0 14px;
+  font-size:.94rem;
+  line-height:1.65;
+  color:var(--tinta-soft);
+}
+
+/* Botón principal: una píldora de tinta verde con sombra difusa y un
+   destello que la cruza de vez en cuando para invitar a tocarla. */
+.btn-jugar-minijuego{
+  position:relative;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:9px;
+  width:100%;
+  padding:15px 18px;
+  font-family:var(--f-display);
+  font-optical-sizing:auto;
+  font-weight:600;
+  font-size:1.06rem;
+  color:var(--papel);
+  background:linear-gradient(145deg, var(--hoja-700), var(--hoja-900));
+  border:none;
+  border-radius:var(--r-pastilla);
+  cursor:pointer;
+  box-shadow:0 10px 22px -12px rgba(58,107,51,.75), var(--sombra-sm);
+  transition:transform .4s var(--ease-brote), box-shadow .4s var(--ease-suave),
+             filter .4s var(--ease-suave);
+}
+.btn-jugar-minijuego::after{
+  content:"";
+  position:absolute;
+  top:0; bottom:0; left:0;
+  width:38%;
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,.38), transparent);
+  animation:brilloPasa 5s var(--ease-suave) 1.2s infinite;
+  pointer-events:none;
+}
+.btn-jugar-minijuego:hover{
+  transform:translateY(-3px);
+  filter:brightness(1.07);
+  box-shadow:0 20px 34px -14px rgba(58,107,51,.7), var(--sombra-md);
+}
+.btn-jugar-minijuego:active{ transform:translateY(-1px); }
+.btn-jugar-minijuego:disabled{
+  opacity:.5;
+  cursor:not-allowed;
+  transform:none;
+  filter:grayscale(.4);
+}
+.btn-jugar-minijuego:disabled::after{ animation:none; opacity:0; }
+
+.minijuego-resumen{
+  margin-top:12px;
+  font-family:var(--f-mano);
+  font-size:1.08rem;
+  color:var(--tinta-soft);
+  text-align:center;
+}
+
+/* Aviso de especie extinta: una nota de alerta sobre papel rosado. */
+.extinct-banner{
+  margin-top:16px;
+  padding:13px 16px;
+  font-size:.9rem;
+  font-weight:600;
+  line-height:1.6;
+  color:var(--mal);
+  background:var(--flor-100);
+  border:1px solid var(--flor-300);
+  border-radius:var(--r-tarjeta);
+  box-shadow:var(--sombra-sm);
+  animation:brote .55s var(--ease-suave) both;
+}
+
+
+/* =============================================================================
+   7. MINIJUEGO: MARCO COMÚN
+   =============================================================================
+   Todas las mecánicas comparten este marco: título, instrucciones, HUD y el
+   tablero donde script.js dibuja lo suyo según sp.minijuego.tipo.
+   ========================================================================== */
+.game-journal{ text-align:center; }
+
+.game-titulo{
+  font-family:var(--f-display);
+  font-optical-sizing:auto;
+  font-weight:600;
+  font-size:1.5rem;
+  letter-spacing:-.01em;
+  color:var(--hoja-900);
+  margin:8px 0 4px;
+}
+.game-instrucciones{
+  margin:0 0 14px;
+  font-size:.93rem;
+  line-height:1.6;
+  color:var(--tinta-soft);
+}
+
+/* HUD: dos anotaciones de campo (tiempo y meta) en píldoras de papel. */
+.game-hud{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  margin-bottom:12px;
+}
+.game-hud > span{
+  padding:6px 15px;
+  font-size:.85rem;
+  color:var(--tinta-soft);
+  background:var(--papel-2);
+  border:1px solid var(--linea);
+  border-radius:var(--r-pastilla);
+}
+.game-hud b{
+  display:inline-block;            /* para que el salto del número funcione */
+  font-family:var(--f-display);
+  font-optical-sizing:auto;
+  font-weight:600;
+  font-size:1.08rem;
+  color:var(--hoja-900);
+}
+/* Gancho de animación para script.js: animarCifra() quita y vuelve a poner
+   la clase .cambia sobre el número, y el CSS lo hace saltar. (.salta queda
+   como alias por si se prefiere ese nombre.) */
+.game-hud b.cambia,
+.cambia,
+.salta{ animation:subeNumero .5s var(--ease-brote); }
+
+/* .game-record: la mejor marca personal guardada para esta especie. Aparece
+   como párrafo en el diario y como línea suelta dentro de las instrucciones;
+   inline-block hace que en ambos casos sea una medallita de papel de miel. */
+.game-record{
+  display:inline-block;
+  margin:10px 0 0;
+  padding:4px 14px;
+  font-family:var(--f-mano);
+  font-size:1.06rem;
+  font-weight:600;
+  color:var(--miel-700);
+  background:var(--miel-100);
+  border:1px solid var(--miel-300);
+  border-radius:var(--r-pastilla);
+}
+
+/* .game-tablero: la página del cuaderno. Lleva el rayado tenue y el margen
+   rosado del papel escolar, y es `relative` porque encima se dibujan la
+   cuenta regresiva, la insignia de racha, las partículas y las ondas. */
+.game-tablero{
+  position:relative;
+  overflow:hidden;
+  min-height:248px;
+  padding:16px;
+  background-color:var(--papel);
+  background-image:
+    repeating-linear-gradient(180deg, rgba(138,190,226,0) 0 25px, rgba(138,190,226,.16) 25px 26px),
+    linear-gradient(90deg, rgba(240,188,205,0) 0 27px, rgba(224,143,172,.30) 27px 28px, rgba(240,188,205,0) 28px),
+    radial-gradient(90% 60% at 88% 100%, rgba(191,220,175,.26) 0%, rgba(191,220,175,0) 66%);
+  border:1px solid var(--linea);
+  border-radius:var(--r-tarjeta);
+  box-shadow:inset 0 2px 12px rgba(58,46,32,.05);
+}
+
+/* .game-item: el objeto que se toca (comida que cae, bicho que asoma).
+   Ojo: la retroalimentación usa las propiedades `scale` y `rotate` (no
+   `transform`) para no pisar el translateX(-50%) que necesitan los
+   carriles. Así ambas cosas se componen sin estorbarse. */
+.game-item{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:1.5rem;
+  line-height:1;
+  color:var(--tinta);
+  background:radial-gradient(circle at 34% 28%, #FFFFFF 0%, var(--papel) 60%, var(--papel-2) 100%);
+  border:1px solid var(--linea);
+  border-radius:var(--r-blob);
+  cursor:pointer;
+  box-shadow:var(--sombra-sm);
+  animation:broteItem .35s var(--ease-brote);
+  transition:box-shadow .3s var(--ease-suave), background .3s var(--ease-suave);
+}
+.game-item:hover{ box-shadow:var(--sombra-md); }
+@keyframes broteItem{
+  0%  { opacity:0; scale:.5; }
+  100%{ opacity:1; scale:1; }
+}
+.game-item.acierto{
+  background:radial-gradient(circle at 34% 28%, var(--hoja-100) 0%, var(--hoja-300) 100%);
+  border-color:var(--hoja-500);
+  animation:brilloAcierto .55s var(--ease-suave);
+}
+.game-item.error{
+  background:radial-gradient(circle at 34% 28%, var(--flor-100) 0%, var(--flor-300) 100%);
+  border-color:var(--mal);
+  animation:negacionSuave .5s var(--ease-suave);
+}
+/* Acierto: el objeto respira una vez y suelta un halo verde que se abre. */
+@keyframes brilloAcierto{
+  0%  { scale:1;    box-shadow:var(--sombra-sm); }
+  45% { scale:1.22; box-shadow:0 0 0 12px rgba(143,189,123,.30), var(--sombra-md); }
+  100%{ scale:1;    box-shadow:0 0 0 0 rgba(143,189,123,0), var(--sombra-sm); }
+}
+/* Error: una negación amable, girando un poco. Sin sacudidas violentas. */
+@keyframes negacionSuave{
+  0%,100%{ rotate:0deg; }
+  25%    { rotate:-6deg; }
+  75%    { rotate:6deg; }
+}
+
+/* Resultado del minijuego: una ficha de cierre con tres líneas —el titular
+   escrito a mano, el dato de campo que deja la partida y la marca personal—.
+   script.js la llena con .resultado-titulo / -dato / -marca. */
+.game-resultado{
+  margin-top:14px;
+  min-height:1.4em;
+  font-family:var(--f-mano);
+  font-size:1.4rem;
+  font-weight:600;
+}
+.game-resultado.gano,
+.game-resultado.perdio{
+  display:block;
+  padding:15px 18px;
+  border-radius:var(--r-tarjeta);
+  box-shadow:var(--sombra-sm);
+}
+.game-resultado.gano{
+  color:var(--hoja-900);
+  background:var(--hoja-100);
+  border:1px solid var(--hoja-300);
+  animation:anotacionFeliz .7s var(--ease-brote);
+}
+.game-resultado.perdio{
+  color:var(--mal);
+  background:var(--flor-100);
+  border:1px solid var(--flor-300);
+  animation:temblorSuave .55s var(--ease-suave);
+}
+/* .con-fanfarria: el cierre vistoso de una victoria. A la entrada se le suma
+   un halo de luz que late dos veces y se va. */
+.game-resultado.con-fanfarria{
+  animation:anotacionFeliz .7s var(--ease-brote),
+            latidoLuz 2.2s ease-in-out .7s 2;
+}
+/* Ya no se estampa un sello de golpe: la nota se posa torcida, como escrita
+   deprisa por alguien contento. */
+@keyframes anotacionFeliz{
+  0%  { opacity:0; transform:scale(.82) rotate(-2.5deg); }
+  60% { opacity:1; transform:scale(1.03) rotate(-1deg); }
+  100%{ opacity:1; transform:scale(1) rotate(-.6deg); }
+}
+
+/* Las tres líneas del resultado, de mayor a menor peso. */
+.resultado-titulo{
+  display:block;
+  font-size:1.5rem;
+  line-height:1.2;
+}
+.resultado-dato{
+  display:block;
+  margin-top:9px;
+  font-family:var(--f-texto);
+  font-size:.9rem;
+  font-weight:400;
+  line-height:1.6;
+  color:var(--tinta-soft);
+}
+.resultado-marca{
+  display:block;
+  margin-top:10px;
+  font-family:var(--f-texto);
+  font-size:.82rem;
+  font-weight:600;
+  color:var(--miel-700);
+}
+
+/* Botón de empezar: píldora de miel y tierra, hermana del botón principal.
+   Late con luz para pedir el primer clic. */
+.game-btn-empezar{
+  position:relative;
+  overflow:hidden;
+  margin-top:14px;
+  padding:13px 30px;
+  font-family:var(--f-texto);
+  font-size:.96rem;
+  font-weight:600;
+  color:var(--papel);
+  background:linear-gradient(145deg, var(--tierra-500), var(--tierra-700));
+  border:none;
+  border-radius:var(--r-pastilla);
+  cursor:pointer;
+  box-shadow:0 10px 20px -12px rgba(110,68,40,.75), var(--sombra-sm);
+  transition:transform .4s var(--ease-brote), box-shadow .4s var(--ease-suave),
+             filter .4s var(--ease-suave);
+}
+.game-btn-empezar::after{
+  content:"";
+  position:absolute;
+  top:0; bottom:0; left:0;
+  width:40%;
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,.40), transparent);
+  animation:brilloPasa 4.2s var(--ease-suave) .8s infinite;
+  pointer-events:none;
+}
+.game-btn-empezar:hover{
+  transform:translateY(-3px);
+  filter:brightness(1.06);
+  box-shadow:0 18px 30px -14px rgba(110,68,40,.7), var(--sombra-md);
+}
+.game-btn-empezar:active{ transform:translateY(-1px); }
+.game-btn-empezar.oculto{ display:none; }
+
+
+/* =============================================================================
+   8. LAS OCHO MECÁNICAS DE MINIJUEGO
+   ========================================================================== */
+
+/* ---- 8.A "atrapa": tres carriles verticales por donde cae la comida ----
+   (Cóndor, Delfín, Guacamayo, Manatí) */
+.carril-pista{
+  display:flex;
+  gap:12px;
+  height:240px;
+}
+.carril{
+  position:relative;
+  flex:1;
+  overflow:hidden;
+  background:linear-gradient(180deg, rgba(253,250,243,.85), rgba(240,232,214,.65));
+  border:1px solid var(--linea);
+  border-radius:var(--r-tarjeta);
+  box-shadow:inset 0 2px 10px rgba(58,46,32,.05);
+  animation:brote .5s var(--ease-suave) both;
+}
+.carril:nth-child(2){ animation-delay:.08s; }
+.carril:nth-child(3){ animation-delay:.16s; }
+.carril:nth-child(4){ animation-delay:.24s; }
+.carril-item{
+  position:absolute;
+  left:50%;
+  width:52px; height:52px;
+  transform:translateX(-50%);
+}
+
+/* ---- 8.B "memoria": cuadrícula de cartas boca abajo ----
+   (Nutria gigante, Coral) */
+.memoria-grid{
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:12px;
+}
+.memoria-carta{
+  aspect-ratio:1/1;
+  font-size:1.7rem;
+  line-height:1;
+  color:var(--tinta-tenue);
+  background:radial-gradient(circle at 32% 26%, #FFFFFF 0%, var(--papel) 62%, var(--papel-2) 100%);
+  border:1px solid var(--linea);
+  border-radius:var(--r-tarjeta);
+  cursor:pointer;
+  box-shadow:var(--sombra-sm);
+  animation:brote .5s var(--ease-suave) both;   /* entrada escalonada */
+  transition:transform .4s var(--ease-brote), box-shadow .4s var(--ease-suave),
+             border-color .4s var(--ease-suave), background .4s var(--ease-suave),
+             color .4s var(--ease-suave);
+}
+.memoria-carta:nth-child(1) { animation-delay:.03s; }
+.memoria-carta:nth-child(2) { animation-delay:.06s; }
+.memoria-carta:nth-child(3) { animation-delay:.09s; }
+.memoria-carta:nth-child(4) { animation-delay:.12s; }
+.memoria-carta:nth-child(5) { animation-delay:.15s; }
+.memoria-carta:nth-child(6) { animation-delay:.18s; }
+.memoria-carta:nth-child(7) { animation-delay:.21s; }
+.memoria-carta:nth-child(8) { animation-delay:.24s; }
+.memoria-carta:nth-child(9) { animation-delay:.27s; }
+.memoria-carta:nth-child(10){ animation-delay:.30s; }
+.memoria-carta:nth-child(11){ animation-delay:.33s; }
+.memoria-carta:nth-child(12){ animation-delay:.36s; }
+.memoria-carta:hover:not(:disabled){ transform:translateY(-4px); box-shadow:var(--sombra-md); }
+.memoria-carta.volteada{
+  color:var(--tinta);
+  border-color:var(--agua-300);
+  animation:cartaAbre .45s var(--ease-brote);
+}
+/* Se abre girando sobre su eje, como una hoja de papel. Sin rebote arcade. */
+@keyframes cartaAbre{
+  0%  { transform:rotateY(78deg) scale(.95); opacity:.4; }
+  100%{ transform:rotateY(0deg) scale(1); opacity:1; }
+}
+.memoria-carta.acierto{
+  background:radial-gradient(circle at 32% 26%, var(--hoja-100) 0%, var(--hoja-300) 100%);
+  border-color:var(--hoja-500);
+  animation:brilloAcierto .55s var(--ease-suave);
+}
+.memoria-carta.error{
+  background:radial-gradient(circle at 32% 26%, var(--flor-100) 0%, var(--flor-300) 100%);
+  border-color:var(--mal);
+  animation:negacionSuave .5s var(--ease-suave);
+}
+.memoria-carta:disabled{ cursor:default; }
+
+/* ---- 8.C "secuencia" (tipo "Simón dice"): repetir el camino de flechas ----
+   (Danta de páramo, Tortuga marina) */
+.secuencia-mostrar{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:2.6em;
+  margin:4px 0 14px;
+  font-family:var(--f-mano);
+  font-size:1.75rem;
+  color:var(--hoja-900);
+}
+.secuencia-pad{
+  display:grid;
+  grid-template-columns:repeat(2, 1fr);
+  gap:12px;
+  max-width:290px;
+  margin:0 auto;
+}
+.secuencia-flecha{
+  padding:18px;
+  font-size:1.6rem;
+  line-height:1;
+  color:var(--hoja-900);
+  background:radial-gradient(circle at 32% 26%, #FFFFFF 0%, var(--papel) 62%, var(--papel-2) 100%);
+  border:1px solid var(--linea);
+  border-radius:var(--r-tarjeta);
+  cursor:pointer;
+  box-shadow:var(--sombra-sm);
+  animation:brote .5s var(--ease-suave) both;
+  transition:transform .35s var(--ease-brote), box-shadow .35s var(--ease-suave),
+             border-color .35s var(--ease-suave), background .35s var(--ease-suave);
+}
+.secuencia-flecha:nth-child(2){ animation-delay:.06s; }
+.secuencia-flecha:nth-child(3){ animation-delay:.12s; }
+.secuencia-flecha:nth-child(4){ animation-delay:.18s; }
+.secuencia-flecha:hover:not(:disabled){
+  transform:translateY(-3px);
+  border-color:var(--hoja-300);
+  background:radial-gradient(circle at 32% 26%, #FFFFFF 0%, var(--hoja-100) 100%);
+  box-shadow:var(--sombra-md);
+}
+.secuencia-flecha:active:not(:disabled){ transform:translateY(-1px); }
+.secuencia-flecha:disabled{ opacity:.42; cursor:not-allowed; box-shadow:none; }
+
+/* ---- 8.D "reflejo": los alimentos asoman un instante en cualquier punto ----
+   (Gallito de roca, Rana dorada) */
+.reflejo-caja{
+  position:relative;
+  height:240px;
+  overflow:hidden;
+  background:linear-gradient(180deg, rgba(253,250,243,.85), rgba(232,242,224,.70));
+  border:1px solid var(--linea);
+  border-radius:var(--r-tarjeta);
+  box-shadow:inset 0 2px 12px rgba(58,46,32,.05);
+}
+.reflejo-item{
+  position:absolute;
+  width:52px; height:52px;
+}
+
+/* ---- 8.E "ritmo": la marca va y viene sobre el cauce ----
+   (Oso de anteojos, Jaguar, Ballena jorobada) */
+.ritmo-barra{
+  position:relative;
+  height:28px;
+  margin:40px 0 24px;
+  background:linear-gradient(180deg, var(--agua-100), var(--papel-3));
+  border-radius:var(--r-pastilla);
+  box-shadow:inset 0 2px 7px rgba(58,46,32,.10);
+}
+/* La zona buena es un remanso de agua clara que respira, no un bloque. */
+.ritmo-zona{
+  position:absolute;
+  top:0; bottom:0;
+  background:linear-gradient(180deg, rgba(184,225,211,.95), rgba(134,201,178,.75));
+  border-radius:var(--r-pastilla);
+  box-shadow:inset 0 0 0 1px rgba(78,157,136,.25);
+  animation:respira 3.6s ease-in-out infinite;
+}
+/* El marcador es un canto rodado que va a la deriva por el cauce. */
+.ritmo-marcador{
+  position:absolute;
+  top:-10px;
+  width:18px; height:48px;
+  transform:translateX(-50%);
+  background:linear-gradient(160deg, var(--tierra-300), var(--tierra-700));
+  border-radius:var(--r-pastilla);
+  box-shadow:var(--sombra-sm);
+  transition:background .3s var(--ease-suave), box-shadow .3s var(--ease-suave);
+}
+.ritmo-marcador.acierto{
+  background:linear-gradient(160deg, var(--hoja-300), var(--hoja-700));
+  box-shadow:0 0 0 10px rgba(143,189,123,.28), var(--sombra-md);
+}
+.ritmo-marcador.error{
+  background:linear-gradient(160deg, var(--flor-300), var(--mal));
+  animation:negacionSuave .5s var(--ease-suave);
+}
+
+/* ---- 8.F "equilibrio": el nivel de agua que baja solo ----
+   (Frailejón) */
+.equilibrio-gauge{
+  position:relative;
+  display:flex;
+  align-items:flex-end;
+  width:80px; height:172px;
+  margin:4px auto 16px;
+  overflow:hidden;
+  background:linear-gradient(180deg, rgba(253,250,243,.92), rgba(230,244,238,.85));
+  border:1px solid var(--linea);
+  /* Vaso de campo: boca ancha arriba, fondo redondeado abajo. */
+  border-radius:16px 16px 36px 34px;
+  box-shadow:inset 0 2px 12px rgba(58,46,32,.08), var(--sombra-sm);
+}
+.equilibrio-nivel{
+  position:relative;
+  width:100%;
+  background:linear-gradient(180deg, var(--agua-500), var(--agua-900));
+  transition:height .8s var(--ease-suave);
+}
+/* La superficie del agua no es recta: es una curva que sube y baja sola. */
+.equilibrio-nivel::before{
+  content:"";
+  position:absolute;
+  left:-10%; right:-10%; top:-7px;
+  height:14px;
+  border-radius:50%;
+  background:var(--agua-300);
+  animation:respira 3.2s ease-in-out infinite;
+}
+/* .en-riesgo: el agua bajó del mínimo sano. El aviso es un cambio de color a
+   tonos de tierra seca y un latido de luz, no una alarma roja. */
+.equilibrio-nivel.en-riesgo{
+  background:linear-gradient(180deg, var(--miel-500), var(--tierra-700));
+  animation:avisoAgua 1.8s ease-in-out infinite;
+}
+.equilibrio-nivel.en-riesgo::before{ background:var(--miel-300); }
+@keyframes avisoAgua{
+  0%, 100%{ filter:brightness(1); }
+  50%     { filter:brightness(1.16); }
+}
+.equilibrio-btn{
+  display:block;
+  margin:0 auto;
+  padding:13px 28px;
+  font-family:var(--f-texto);
+  font-size:.96rem;
+  font-weight:600;
+  color:var(--papel);
+  background:linear-gradient(145deg, var(--agua-700), var(--agua-900));
+  border:none;
+  border-radius:var(--r-pastilla);
+  cursor:pointer;
+  box-shadow:0 10px 20px -12px rgba(42,110,100,.75), var(--sombra-sm);
+  transition:transform .4s var(--ease-brote), box-shadow .4s var(--ease-suave),
+             filter .4s var(--ease-suave);
+}
+.equilibrio-btn:hover{
+  transform:translateY(-3px);
+  filter:brightness(1.07);
+  box-shadow:0 18px 30px -14px rgba(42,110,100,.7), var(--sombra-md);
+}
+.equilibrio-btn:active{ transform:translateY(-1px); }
+
+/* ---- 8.G "clasifica": separar lo que cuida de lo que amenaza ----
+   Llega una pieza (un alimento, un residuo) y hay que echarla en el canasto
+   correcto. Los canastos son cuencos de fibra tejida, no botones cuadrados. */
+.clasifica-wrap{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+  animation:brote .55s var(--ease-suave) both;
+}
+
+.clasifica-pregunta{
+  margin:0;
+  font-family:var(--f-mano);
+  font-size:1.24rem;
+  color:var(--tinta-soft);
+}
+
+/* La zona donde descansa la pieza que toca clasificar ahora. */
+.clasifica-pieza-zona{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:108px;
+}
+
+/* La pieza: un recorte de papel con su emoji y su nombre escrito debajo.
+   Mientras espera decisión, flota: está "en el aire". */
+.clasifica-pieza{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:4px;
+  padding:12px 22px;
+  background:radial-gradient(circle at 34% 24%, #FFFFFF 0%, var(--papel) 62%, var(--papel-2) 100%);
+  border:1px solid var(--linea);
+  border-radius:var(--r-tarjeta);
+  box-shadow:var(--sombra-md);
+  animation:deriva 5.2s ease-in-out infinite;
+}
+.clasifica-emoji{
+  font-size:2.6rem;
+  line-height:1;
+  filter:drop-shadow(0 3px 4px rgba(58,46,32,.20));
+}
+.clasifica-nombre{
+  font-family:var(--f-mano);
+  font-size:1.1rem;
+  color:var(--tinta-soft);
+}
+
+/* Estados de la pieza (los pone script.js):
+   .entra      -> acaba de aparecer: brota desde abajo
+   .sale-bueno -> bien clasificada: sube y se disuelve como polen
+   .sale-malo  -> mal clasificada: se va hacia abajo con una negación suave */
+.clasifica-pieza.entra{ animation:brote .55s var(--ease-brote) both; }
+.clasifica-pieza.sale-bueno{ animation:piezaSube .55s var(--ease-suave) forwards; }
+.clasifica-pieza.sale-malo{ animation:piezaCae .55s var(--ease-suave) forwards; }
+@keyframes piezaSube{
+  0%  { opacity:1; transform:translateY(0) scale(1) rotate(0deg); }
+  100%{ opacity:0; transform:translateY(-56px) scale(.82) rotate(-7deg); }
+}
+@keyframes piezaCae{
+  0%  { opacity:1; transform:translateY(0) rotate(0deg); }
+  35% { transform:translateY(5px) rotate(-5deg); }
+  100%{ opacity:0; transform:translateY(44px) rotate(8deg); }
+}
+
+/* Los dos canastos, uno al lado del otro. */
+.clasifica-cestas{
+  display:flex;
+  justify-content:center;
+  gap:20px;
+  flex-wrap:wrap;
+}
+
+/* El cuerpo del canasto: fibra tejida (dos tramas cruzadas muy tenues)
+   sobre barro claro, más angosto abajo que arriba. */
+.clasifica-cesta{
+  position:relative;
+  flex:1 1 140px;
+  max-width:212px;
+  min-height:112px;
+  padding:26px 12px 16px;
+  margin-top:11px;
+  color:var(--tierra-900);
+  background-color:var(--tierra-300);
+  background-image:
+    repeating-linear-gradient(90deg, rgba(110,68,40,.10) 0 5px, rgba(110,68,40,0) 5px 11px),
+    repeating-linear-gradient(0deg,  rgba(110,68,40,.07) 0 6px, rgba(110,68,40,0) 6px 13px),
+    linear-gradient(180deg, rgba(253,243,218,.55), rgba(169,112,63,.28));
+  border:none;
+  /* Boca ancha arriba, fondo hondo y redondo abajo: un cuenco, no una caja. */
+  border-radius:14% 14% 44% 44% / 10% 10% 52% 52%;
+  cursor:pointer;
+  box-shadow:inset 0 -10px 18px -10px rgba(110,68,40,.40), var(--sombra-md);
+  animation:brote .55s var(--ease-suave) both;
+  transition:transform .4s var(--ease-brote), box-shadow .4s var(--ease-suave),
+             filter .4s var(--ease-suave);
+}
+.clasifica-cesta:nth-child(2){ animation-delay:.09s; }
+/* El aro del canasto: una elipse de fibra que sobresale por el borde. */
+.clasifica-cesta::before{
+  content:"";
+  position:absolute;
+  left:-6px; right:-6px; top:-11px;
+  height:23px;
+  border-radius:50%;
+  background:linear-gradient(180deg, var(--tierra-300), var(--tierra-500));
+  box-shadow:inset 0 -4px 7px rgba(110,68,40,.22), var(--sombra-sm);
+}
+.clasifica-cesta:hover{
+  transform:translateY(-4px);
+  filter:brightness(1.04);
+  box-shadow:inset 0 -10px 18px -10px rgba(110,68,40,.40), var(--sombra-lg);
+}
+.clasifica-cesta:active{ transform:translateY(-1px); }
+
+/* El aro teñido es lo que distingue los dos canastos: verde hoja para lo
+   que cuida, terracota de alerta para lo que amenaza. */
+.clasifica-cesta.cesta-buena::before{
+  background:linear-gradient(180deg, var(--hoja-300), var(--hoja-700));
+}
+.clasifica-cesta.cesta-mala::before{
+  background:linear-gradient(180deg, var(--tierra-300), var(--mal));
+}
+
+/* Respuesta inmediata al soltar la pieza. */
+.clasifica-cesta.acierto{
+  animation:cestaRecibe .6s var(--ease-brote);
+  box-shadow:0 0 0 12px rgba(143,189,123,.28), var(--sombra-lg);
+}
+.clasifica-cesta.error{
+  animation:temblorSuave .5s var(--ease-suave);
+  box-shadow:0 0 0 12px rgba(168,80,60,.20), var(--sombra-md);
+}
+/* El canasto "acoge": se hunde un poco y vuelve, como al recibir algo. */
+@keyframes cestaRecibe{
+  0%  { transform:translateY(0) scale(1); }
+  40% { transform:translateY(5px) scale(1.05, .95); }
+  100%{ transform:translateY(0) scale(1); }
+}
+
+.cesta-icono{
+  display:block;
+  font-size:2.05rem;
+  line-height:1;
+  filter:drop-shadow(0 2px 3px rgba(110,68,40,.28));
+}
+.cesta-texto{
+  display:block;
+  margin-top:5px;
+  font-family:var(--f-mano);
+  font-size:1.1rem;
+  font-weight:600;
+  color:var(--tierra-900);
+}
+
+.clasifica-feedback{
+  min-height:1.5em;
+  margin:0;
+  font-family:var(--f-mano);
+  font-size:1.18rem;
+  color:var(--tinta-soft);
+  transition:color .35s var(--ease-suave);
+}
+
+/* El feedback es lo que convierte el acierto en aprendizaje: al clasificar
+   bien explica POR QUÉ ese alimento cuida a la especie. Se tiñe según el
+   resultado y entra con un empujoncito, para que la vista vaya hacia él. */
+.clasifica-feedback.acierto{
+  color:var(--bien);
+  animation:brote .4s var(--ease-brote) both;
+}
+
+.clasifica-feedback.error{
+  color:var(--mal);
+  animation:temblorSuave .4s ease both;
+}
+
+/* ---- 8.H "camino": cruzar el sendero pisando solo las piedras firmes ----
+   El tablero se lee de abajo (.camino-inicio) hacia arriba (.camino-meta-sup).
+   Aquí sí mandan las formas asimétricas: las piedras son cantos rodados, con
+   su luz arriba a la izquierda y su sombra de contacto por debajo. */
+.camino-wrap{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:12px;
+  animation:brote .55s var(--ease-suave) both;
+}
+
+/* La meta, arriba: la otra orilla del sendero. Late para marcar el objetivo. */
+.camino-meta-sup{
+  padding:7px 22px;
+  font-family:var(--f-mano);
+  font-size:1.18rem;
+  color:var(--hoja-900);
+  background:var(--hoja-100);
+  border:1px solid var(--hoja-300);
+  border-radius:var(--r-pastilla);
+  animation:latidoLuz 3.4s ease-in-out infinite;
+}
+
+.camino-filas{
+  display:flex;
+  flex-direction:column;
+  gap:11px;
+  width:100%;
+}
+
+/* Cada fila es un tramo del sendero. Serpentean un poco con MARGEN (no con
+   transform) para que el camino no sea una escalera recta y para no estorbar
+   las animaciones de las piedras. */
+.camino-fila{
+  display:flex;
+  justify-content:center;
+  gap:12px;
+  opacity:.5;
+  transition:opacity .6s var(--ease-suave), filter .6s var(--ease-suave);
+}
+.camino-fila:nth-child(odd) { margin-right:20px; }
+.camino-fila:nth-child(even){ margin-left:20px; }
+
+/* La fila activa es la única bien iluminada: ahí hay que pisar ahora. */
+.camino-fila.activa{ opacity:1; }
+/* Las filas ya cruzadas quedan atrás, apagadas como huellas viejas. */
+.camino-fila.pasada{ opacity:.34; filter:grayscale(.4); }
+
+/* Canto rodado: piedra clara, luz arriba a la izquierda, sombra de contacto
+   debajo. La forma alterna para que no parezcan piedras clonadas. */
+.camino-piedra{
+  width:64px; height:52px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:1.2rem;
+  line-height:1;
+  color:var(--tinta-soft);
+  background:radial-gradient(70% 70% at 34% 26%, var(--papel) 0%, var(--papel-3) 62%, var(--linea-fuerte) 100%);
+  border:none;
+  border-radius:var(--r-blob);
+  cursor:pointer;
+  box-shadow:inset 0 -5px 10px -5px rgba(110,68,40,.35),
+             inset 0 4px 8px -4px rgba(255,255,255,.80),
+             0 8px 14px -8px rgba(58,46,32,.45);
+  transition:transform .4s var(--ease-brote), box-shadow .4s var(--ease-suave),
+             background .5s var(--ease-suave), color .4s var(--ease-suave);
+}
+.camino-piedra:nth-child(even){ border-radius:var(--r-blob-2); }
+
+.camino-fila.activa .camino-piedra:hover:not(:disabled){
+  transform:translateY(-4px);
+  box-shadow:inset 0 -5px 10px -5px rgba(110,68,40,.30),
+             0 16px 22px -12px rgba(58,46,32,.45);
+}
+
+/* Piedra firme: musgo verde encima, por ahí se puede pasar. */
+.camino-piedra.segura-revelada{
+  color:var(--hoja-900);
+  background:radial-gradient(70% 70% at 34% 26%, var(--hoja-100) 0%, var(--hoja-300) 70%, var(--hoja-500) 100%);
+  box-shadow:0 0 0 8px rgba(143,189,123,.24), var(--sombra-md);
+}
+/* Piedra floja: se hunde. Aviso en terracota, con un temblor amable. */
+.camino-piedra.trampa-revelada{
+  color:var(--mal);
+  background:radial-gradient(70% 70% at 34% 26%, var(--flor-100) 0%, var(--flor-300) 70%, var(--mal) 100%);
+  animation:temblorSuave .55s var(--ease-suave);
+}
+/* La piedra ya pisada se asienta: baja un poco y pierde el brillo del canto. */
+.camino-piedra.pisada{
+  transform:translateY(3px) scale(.96);
+  box-shadow:inset 0 -3px 8px -4px rgba(110,68,40,.40),
+             0 4px 8px -6px rgba(58,46,32,.40);
+}
+.camino-piedra:disabled{ cursor:default; opacity:.72; }
+
+/* El punto de partida, abajo: la orilla desde donde se arranca. */
+.camino-inicio{
+  padding:7px 22px;
+  font-family:var(--f-mano);
+  font-size:1.12rem;
+  color:var(--tierra-700);
+  background:var(--tierra-100);
+  border:1px solid var(--tierra-300);
+  border-radius:var(--r-pastilla);
+  box-shadow:var(--sombra-sm);
+}
+
+
+/* =============================================================================
+   9. SENSACIÓN DE JUEGO
+   =============================================================================
+   Elementos que script.js crea al vuelo encima del tablero. Todos son
+   decorativos: ninguno debe interceptar clics.
+   ========================================================================== */
+
+/* Cuenta regresiva 3·2·1·¡Ya!: un velo de papel sobre el tablero con un
+   número grande de lámina. OJO: la animación va en el <span> interior, no en
+   el contenedor, porque script.js la reinicia en cada paso quitando y
+   volviendo a poner numero.style.animation. */
+.cuenta-regresiva{
+  position:absolute;
+  inset:0;
+  z-index:4;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(253,250,243,.66);
+  backdrop-filter:blur(1.5px);
+  -webkit-backdrop-filter:blur(1.5px);
+  border-radius:inherit;
+  pointer-events:none;
+}
+.cuenta-regresiva span{
+  display:block;
+  font-family:var(--f-display);
+  font-optical-sizing:auto;
+  font-weight:600;
+  font-size:clamp(2.8rem, 16vw, 5.4rem);
+  line-height:1;
+  white-space:nowrap;
+  color:var(--hoja-900);
+  text-shadow:0 8px 26px rgba(58,46,32,.18);
+  animation:cuentaSeDesvanece .72s var(--ease-suave) both;
+}
+@keyframes cuentaSeDesvanece{
+  0%  { opacity:0; transform:scale(.68); }
+  28% { opacity:1;  transform:scale(1); }
+  100%{ opacity:0; transform:scale(1.42); }
+}
+
+/* Insignia de racha: discreta, en una esquina del tablero. Escrita a mano
+   sobre papel de miel. Solo se ve con la clase .visible. */
+.combo-badge{
+  position:absolute;
+  top:12px; right:14px;
+  z-index:3;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:4px 14px;
+  font-family:var(--f-mano);
+  font-size:1.08rem;
+  font-weight:600;
+  white-space:nowrap;
+  color:var(--miel-700);
+  background:var(--miel-100);
+  border:1px solid var(--miel-300);
+  border-radius:var(--r-pastilla);
+  box-shadow:var(--sombra-sm);
+  opacity:0;
+  transform:translateY(-10px) rotate(-2deg);
+  pointer-events:none;
+  transition:opacity .45s var(--ease-suave), transform .45s var(--ease-brote);
+}
+.combo-badge.visible{
+  opacity:1;
+  transform:translateY(0) rotate(-2deg);
+}
+/* Si la insignia se coloca dentro del HUD en vez del tablero, se comporta
+   como un elemento más de la fila. */
+.game-hud .combo-badge{ position:static; transform:none; }
+.game-hud .combo-badge.visible{ transform:none; }
+
+/* Partícula de acierto: una hojita o pétalo que cae girando. script.js
+   define --dx, --dy y --rot por partícula; hojaCae vive en herbario.css. */
+.particula{
+  position:absolute;
+  z-index:3;
+  font-size:1.15rem;
+  line-height:1;
+  pointer-events:none;
+  user-select:none;
+  animation:hojaCae 1.3s var(--ease-suave) forwards;
+}
+
+/* Onda: el círculo que se abre donde se tocó, como una gota en el agua.
+   ondaAgua ya incluye el translate(-50%,-50%), así que script.js solo tiene
+   que poner left/top en el punto exacto del toque. */
+.onda{
+  position:absolute;
+  z-index:2;
+  width:58px; height:58px;
+  border:2px solid var(--agua-500);
+  border-radius:50%;
+  pointer-events:none;
+  animation:ondaAgua .95s var(--ease-suave) forwards;
+}
+
+/* Leyenda: tarjetitas de referencia de qué cuida y qué amenaza a la especie.
+   Se leen antes de empezar, como la clave de una lámina. */
+.leyenda-items{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:8px;
+  margin:0 0 14px;
+}
+.leyenda-item{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  padding:5px 13px;
+  background:var(--papel);
+  border:1px solid var(--linea);
+  border-radius:var(--r-pastilla);
+  box-shadow:var(--sombra-sm);
+  animation:brote .5s var(--ease-suave) both;
+  transition:transform .35s var(--ease-suave), box-shadow .35s var(--ease-suave);
+}
+.leyenda-item:nth-child(2){ animation-delay:.05s; }
+.leyenda-item:nth-child(3){ animation-delay:.10s; }
+.leyenda-item:nth-child(4){ animation-delay:.15s; }
+.leyenda-item:nth-child(5){ animation-delay:.20s; }
+.leyenda-item:nth-child(6){ animation-delay:.25s; }
+.leyenda-item:hover{ transform:translateY(-2px); box-shadow:var(--sombra-md); }
+.leyenda-item.bueno{ background:var(--hoja-100); border-color:var(--hoja-300); }
+.leyenda-item.malo { background:var(--flor-100); border-color:var(--flor-300); }
+
+.leyenda-emoji{
+  font-size:1.18rem;
+  line-height:1;
+  display:inline-block;
+  animation:balanceo 5s ease-in-out infinite;
+}
+.leyenda-texto{
+  font-size:.83rem;
+  color:var(--tinta-soft);
+}
+.leyenda-item.bueno .leyenda-texto{ color:var(--hoja-900); }
+.leyenda-item.malo  .leyenda-texto{ color:var(--mal); }
+
+
+/* =============================================================================
+   10. VENTANA DE REGISTRO
+   =============================================================================
+   Es la misma hoja de papel (.journal) con un ancho menor. El formulario lo
+   envía script.js por fetch a register.php.
+   ========================================================================== */
+/* El registro es la puerta de entrada: su velo es un punto más cerrado que
+   el del resto de ventanas para que el formulario se lea sin distracción. */
+.registro-overlay{ background:rgba(78,62,44,.44); }
+.registro-journal{ max-width:420px; text-align:center; }
+
+.registro-emoji{
+  font-size:2.7rem;
+  margin:0 0 4px;
+  animation:respira 5.2s ease-in-out infinite;
+}
+.registro-sub{
+  margin:8px 0 18px;
+  font-size:.91rem;
+  line-height:1.65;
+  color:var(--tinta-soft);
+}
+
+.registro-label{
+  display:block;
+  text-align:left;
+  margin:12px 0 5px;
+  font-size:.83rem;
+  font-weight:600;
+  color:var(--hoja-900);
+}
+.registro-input{
+  width:100%;
+  padding:12px 15px;
+  font-family:var(--f-texto);
+  font-size:.94rem;
+  color:var(--tinta);
+  background:var(--papel);
+  border:1px solid var(--linea-fuerte);
+  border-radius:var(--r-suave);
+  box-shadow:inset 0 1px 3px rgba(58,46,32,.06);
+  transition:border-color .35s var(--ease-suave), box-shadow .35s var(--ease-suave);
+}
+.registro-input::placeholder{ color:var(--tinta-tenue); }
+.registro-input:focus{
+  outline:none;
+  border-color:var(--hoja-500);
+  box-shadow:0 0 0 4px rgba(143,189,123,.26);
+}
+
+.registro-error{
+  margin:10px 0 0;
+  min-height:1.3em;
+  text-align:left;
+  font-size:.83rem;
+  color:var(--mal);
+}
+
+.registro-submit{
+  position:relative;
+  overflow:hidden;
+  width:100%;
+  margin-top:16px;
+  padding:13px;
+  font-family:var(--f-texto);
+  font-size:.96rem;
+  font-weight:600;
+  color:var(--papel);
+  background:linear-gradient(145deg, var(--hoja-700), var(--hoja-900));
+  border:none;
+  border-radius:var(--r-pastilla);
+  cursor:pointer;
+  box-shadow:0 10px 20px -12px rgba(58,107,51,.75), var(--sombra-sm);
+  transition:transform .4s var(--ease-brote), box-shadow .4s var(--ease-suave),
+             filter .4s var(--ease-suave);
+}
+.registro-submit:hover{
+  transform:translateY(-3px);
+  filter:brightness(1.07);
+  box-shadow:0 18px 30px -14px rgba(58,107,51,.7), var(--sombra-md);
+}
+.registro-submit:active{ transform:translateY(-1px); }
+.registro-submit:disabled{ opacity:.6; cursor:wait; transform:none; }
+
+
+/* =============================================================================
+   11. AVISOS, UTILIDADES Y RESPONSIVE
+   ========================================================================== */
+
+/* Toast: una nota que sube desde abajo y se retira sola. */
+#toast{
+  position:fixed;
+  left:50%; bottom:22px;
+  z-index:60;
+  max-width:90vw;
+  padding:11px 24px;
+  font-size:.89rem;
+  text-align:center;
+  color:var(--papel);
+  background:var(--hoja-900);
+  border-radius:var(--r-pastilla);
+  box-shadow:var(--sombra-lg);
+  opacity:0;
+  transform:translateX(-50%) translateY(16px);
+  pointer-events:none;
+  transition:opacity .45s var(--ease-suave), transform .45s var(--ease-brote);
+}
+#toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+.footer-note{
+  max-width:700px;
+  margin:30px auto 0;
+  text-align:center;
+  font-size:.81rem;
+  line-height:1.65;
+  color:var(--tinta-tenue);
+}
+.footer-note code{
+  font-size:.95em;
+  padding:2px 7px;
+  background:var(--papel-2);
+  border:1px solid var(--linea);
+  border-radius:var(--r-pastilla);
+}
+
+/* Botón de reinicio: discreto, de papel, para no competir con el juego. */
+.reset-btn{
+  display:block;
+  margin:22px auto 0;
+  padding:9px 22px;
+  font-family:var(--f-texto);
+  font-size:.85rem;
+  font-weight:600;
+  color:var(--tinta-soft);
+  background:var(--papel);
+  border:1px solid var(--linea);
+  border-radius:var(--r-pastilla);
+  cursor:pointer;
+  box-shadow:var(--sombra-sm);
+  transition:transform .4s var(--ease-brote), box-shadow .4s var(--ease-suave),
+             color .4s var(--ease-suave), background .4s var(--ease-suave);
+}
+.reset-btn:hover{
+  color:var(--hoja-900);
+  background:var(--papel-2);
+  transform:translateY(-2px);
+  box-shadow:var(--sombra-md);
+}
+.reset-btn:active{ transform:translateY(0); }
+
+/* ---- Pantallas pequeñas ---- */
+@media (max-width:480px){
+  body{ padding:20px 12px 48px; }
+
+  .vine-wrap{ padding:14px 16px 13px; }
+  .zona{ min-height:190px; padding:14px 14px 10px; }
+  .habitat{ height:172px; }
+
+  .medallion{ width:58px; height:58px; font-size:1.6rem; }
+  .mini-tag{ font-size:.88rem; }
+
+  .journal{ padding:24px 20px 20px; }
+  .journal-emoji{ width:62px; height:62px; font-size:2rem; }
+  .journal-title{ font-size:1.32rem; }
+  .tab-btn{ padding:7px 14px; font-size:.82rem; }
+
+  .game-tablero{ padding:12px; min-height:226px; }
+  .carril-pista, .reflejo-caja{ height:216px; }
+  .memoria-grid{ gap:9px; }
+  .secuencia-pad{ gap:9px; }
+  .secuencia-flecha{ padding:14px; }
+
+  .clasifica-cestas{ gap:12px; }
+  .clasifica-cesta{ min-height:98px; padding:22px 8px 14px; }
+  .cesta-icono{ font-size:1.75rem; }
+  .clasifica-emoji{ font-size:2.2rem; }
+
+  .camino-piedra{ width:52px; height:45px; font-size:1.05rem; }
+  .camino-fila{ gap:9px; }
+  .camino-fila:nth-child(odd) { margin-right:10px; }
+  .camino-fila:nth-child(even){ margin-left:10px; }
+
+  .game-hud{ flex-direction:column; align-items:stretch; gap:6px; }
+  .combo-badge{ top:8px; right:10px; font-size:1rem; }
+}
+
+
+/* =============================================================================
+   12. MODO INCRUSTADO (?embed=1)
+   =============================================================================
+   El juego se muestra dentro de un iframe en la página principal de Alyra,
+   que ya tiene su propio título y su propio logo. Aquí se ocultan los del
+   juego y las notas para quien desarrolla.
+   ========================================================================== */
+body.embed{ padding-top:16px; }
+.embed .eyebrow,
+.embed h1,
+.embed .subtitle,
+.embed .footer-note{ display:none; }
+

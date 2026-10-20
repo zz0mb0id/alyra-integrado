@@ -1,0 +1,26 @@
+# Archivos que NO deben subirse a un hosting estático (Vercel, GitHub Pages)
+#
+# ¿Por qué? En un hosting estático los archivos .php NO se ejecutan: se
+# sirven como texto plano. Cualquiera podría descargar config.php y ver las
+# credenciales de la base de datos.
+#
+# Alyra requiere PHP + MySQL. El HTML estático puede mostrar el aviso de que
+# el backend falta, pero no puede leer ni guardar publicaciones:
+#   · api/*.php      -> la API no existirá y el feed mostrará un error.
+#   · juego/*.php    -> el juego integrado no podrá conectarse a MySQL.
+#   · config.php     -> solo lo usan los .php.
+#
+# Para ejecutar la aplicación, publícala en un hosting CON PHP (InfinityFree,
+# Hostinger, cPanel); Vercel estático no es compatible. .vercelignore solo lo
+# usa el CLI de Vercel.
+config.php
+api/
+juego/config.php
+juego/register.php
+juego/save_progress.php
+juego/get_progress.php
+juego/logout.php
+juego/index.php
+database.sql
+test_api.py
+

@@ -1,0 +1,260 @@
+/* =============================================================================
+   herbario.css — Sistema de diseño compartido de Alyra
+   =============================================================================
+   Lo usan a la vez la página principal (alyra_1.html) y el juego
+   (juego/index.php), para que todo se sienta de una sola pieza.
+
+   Dirección de arte: HERBARIO. Papel tibio, tinta cálida, acuarela botánica,
+   formas orgánicas asimétricas y sombras suaves. Nada de esquinas duras,
+   nada de neón, nada de degradados borrosos genéricos.
+   ========================================================================== */
+
+:root {
+  /* ---- Papel y tinta ----
+     Papel crema aireado, como el diseño original, pero con un paso más de
+     profundidad para que las capas se distingan sin ensuciar el color. ---- */
+  --papel:       #FDFAF3;   /* fondo principal, papel tibio y claro */
+  --papel-2:     #F8F2E4;   /* papel con un tono más */
+  --papel-3:     #F0E8D6;   /* papel sombreado */
+  --tinta:       #3A2E20;   /* marrón tinta, cálido, nunca negro */
+  --tinta-soft:  #7A6B56;   /* texto secundario */
+  --tinta-tenue: #A79781;   /* texto terciario, leyendas */
+  --linea:       #EADFC8;   /* reglas y bordes suaves */
+  --linea-fuerte:#D7C7A6;
+
+  /* ---- Hoja (verdes del bosque) ---- */
+  --hoja-900: #3A6B33;
+  --hoja-700: #5E9450;
+  --hoja-500: #8FBD7B;
+  --hoja-300: #BFDCAF;
+  --hoja-100: #E8F2E0;
+
+  /* ---- Tierra (cortezas y barro) ---- */
+  --tierra-900: #6E4428;
+  --tierra-700: #A9703F;
+  --tierra-500: #DFA471;
+  --tierra-300: #F1C9A2;
+  --tierra-100: #FAEBDC;
+
+  /* ---- Miel (ocres y polen) ---- */
+  --miel-700: #C09A33;
+  --miel-500: #E7C45E;
+  --miel-300: #F4DE9C;
+  --miel-100: #FDF3DA;
+
+  /* ---- Agua (ríos y mar) ---- */
+  --agua-900: #2A6E64;
+  --agua-700: #4E9D88;
+  --agua-500: #86C9B2;
+  --agua-300: #B8E1D3;
+  --agua-100: #E6F4EE;
+
+  /* ---- Flor (rosas apagados) ---- */
+  --flor-700: #B4607F;
+  --flor-500: #E08FAC;
+  --flor-300: #F2BCCD;
+  --flor-100: #FBE8EE;
+
+  /* ---- Cielo ---- */
+  --cielo-700: #4E85B4;
+  --cielo-500: #8ABEE2;
+  --cielo-300: #BEDCF1;
+  --cielo-100: #E8F2FA;
+
+  /* ---- Semánticos ---- */
+  --bien:  var(--hoja-700);
+  --mal:   #A8503C;
+  --aviso: var(--miel-700);
+
+  /* ---- Sombras: suaves, cálidas, en capas. Nunca duras ni grises ---- */
+  --sombra-sm: 0 1px 2px rgba(36, 30, 22, .04), 0 2px 6px rgba(36, 30, 22, .05);
+  --sombra-md: 0 2px 4px rgba(36, 30, 22, .04), 0 8px 20px rgba(36, 30, 22, .07);
+  --sombra-lg: 0 4px 8px rgba(36, 30, 22, .05), 0 18px 44px rgba(36, 30, 22, .10);
+  --sombra-xl: 0 6px 12px rgba(36, 30, 22, .06), 0 30px 70px rgba(36, 30, 22, .14);
+
+  /* ---- Radios ----
+     La base es redondeada y amable, como el diseño original (píldoras y
+     tarjetas suaves). Las formas asimétricas quedan como ACENTO puntual
+     (medallones, manchas, piedras), no como lenguaje general. ---- */
+  --r-pastilla: 999px;      /* botones, chips, pestañas */
+  --r-tarjeta:  20px;       /* tarjetas y paneles */
+  --r-suave:    14px;       /* campos, elementos pequeños */
+  --r-grande:   28px;       /* ventanas y bloques grandes */
+  /* acentos orgánicos, usar con moderación */
+  --r-piedra:  26px 20px 24px 18px;
+  --r-piedra2: 20px 26px 18px 24px;
+  --r-blob:    58% 42% 48% 52% / 52% 46% 54% 48%;
+  --r-blob-2:  44% 56% 62% 38% / 46% 58% 42% 54%;
+  --r-hoja:    100% 12% 100% 12%;
+  --r-hoja-2:  12% 100% 12% 100%;
+
+  /* ---- Tipografía ----
+     Volvemos al serif cálido del diseño original (Fraunces), pero usado con
+     intención: pesos y tamaños ópticos deliberados, y acompañado de una
+     sans humanista tibia y de una letra manuscrita para las notas de campo. */
+  --f-display: 'Fraunces', 'Georgia', serif;            /* títulos */
+  --f-texto:   'Hanken Grotesk', system-ui, sans-serif; /* cuerpo */
+  --f-mano:    'Caveat', cursive;                       /* notas escritas a mano */
+
+  /* ---- Grano de papel (SVG inline, se aplica con .grano) ---- */
+  --grano: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.42'/%3E%3C/svg%3E");
+
+  /* ---- Curvas de animación ---- */
+  --ease-suave: cubic-bezier(.22, .68, .32, 1);
+  --ease-brote: cubic-bezier(.2, .9, .3, 1.08);
+}
+
+/* =============================================================================
+   GRANO DE PAPEL
+   Se pone sobre el <body> con un pseudo-elemento para que no afecte nada más.
+   ========================================================================== */
+.grano::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: var(--grano);
+  opacity: .055;
+  pointer-events: none;
+  z-index: 9999;
+  mix-blend-mode: multiply;
+}
+
+/* =============================================================================
+   ANIMACIONES COMPARTIDAS
+   Todas lentas y suaves: nada de rebotes de videojuego.
+   ========================================================================== */
+
+/* brote: algo que crece desde abajo, como un tallo saliendo */
+@keyframes brote {
+  0%   { opacity: 0; transform: translateY(14px) scale(.96); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* deriva: flotación lenta, como una hoja sobre agua quieta */
+@keyframes deriva {
+  0%, 100% { transform: translateY(0) rotate(var(--giro, 0deg)); }
+  50%      { transform: translateY(-9px) rotate(calc(var(--giro, 0deg) + 1.5deg)); }
+}
+
+/* respira: latido muy suave, para cosas vivas */
+@keyframes respira {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.035); }
+}
+
+/* hojaCae: partícula que cae girando (aciertos del juego) */
+@keyframes hojaCae {
+  0%   { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); }
+  100% { opacity: 0; transform: translate(var(--dx, 0px), var(--dy, -60px)) rotate(var(--rot, 180deg)) scale(.5); }
+}
+
+/* ondaAgua: círculo que se expande y se desvanece */
+@keyframes ondaAgua {
+  0%   { opacity: .5; transform: translate(-50%, -50%) scale(.3); }
+  100% { opacity: 0;  transform: translate(-50%, -50%) scale(2.6); }
+}
+
+/* temblorSuave: negación amable, sin violencia */
+@keyframes temblorSuave {
+  0%, 100% { transform: translateX(0); }
+  25%      { transform: translateX(-4px); }
+  75%      { transform: translateX(4px); }
+}
+
+/* aparecePapel: entrada de ventanas/overlays */
+@keyframes aparecePapel {
+  0%   { opacity: 0; transform: translateY(18px) scale(.975); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* balanceo: vaivén lento, como una rama con brisa. Usa --giro para inclinar */
+@keyframes balanceo {
+  0%, 100% { transform: rotate(calc(var(--giro, 0deg) - 2.5deg)); }
+  50%      { transform: rotate(calc(var(--giro, 0deg) + 2.5deg)); }
+}
+
+/* giroLento: rotación continua muy lenta, para adornos circulares */
+@keyframes giroLento {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* brilloPasa: un destello de luz que cruza una superficie (usar con
+   background-position sobre un degradado, o sobre un ::after inclinado) */
+@keyframes brilloPasa {
+  0%   { transform: translateX(-120%) skewX(-18deg); opacity: 0; }
+  40%  { opacity: .5; }
+  100% { transform: translateX(220%) skewX(-18deg); opacity: 0; }
+}
+
+/* latidoLuz: halo que crece y se desvanece, para cosas destacadas */
+@keyframes latidoLuz {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(143, 189, 123, .45); }
+  50%      { box-shadow: 0 0 0 14px rgba(143, 189, 123, 0); }
+}
+
+/* dibujaTrazo: dibuja un trazo SVG. Requiere stroke-dasharray/offset iguales */
+@keyframes dibujaTrazo {
+  0%   { stroke-dashoffset: var(--largo, 300); }
+  100% { stroke-dashoffset: 0; }
+}
+
+/* subeNumero: el marcador salta un poco cuando cambia una cifra */
+@keyframes subeNumero {
+  0%   { transform: translateY(0) scale(1); }
+  40%  { transform: translateY(-5px) scale(1.16); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+/* creceBarra: una barra de progreso que se llena desde la izquierda */
+@keyframes creceBarra {
+  0%   { transform: scaleX(0); }
+  100% { transform: scaleX(1); }
+}
+
+/* entraDesdeLado: entradas laterales suaves. Usa --desde (px) */
+@keyframes entraDesdeLado {
+  0%   { opacity: 0; transform: translateX(var(--desde, -20px)); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+/* =============================================================================
+   UTILIDADES DE ANIMACIÓN
+   Clases pequeñas para no repetir las mismas declaraciones por todo el sitio.
+   ========================================================================== */
+
+/* .brota — entrada estándar de cualquier bloque */
+.brota { animation: brote .6s var(--ease-suave) both; }
+
+/* .flota — flotación continua (hojas, insignias, adornos) */
+.flota { animation: deriva 7s ease-in-out infinite; }
+
+/* .respirando — latido lento para elementos vivos */
+.respirando { animation: respira 4.5s ease-in-out infinite; }
+
+/* .balancea — vaivén de rama */
+.balancea { animation: balanceo 6s ease-in-out infinite; }
+
+/* Escalonado: aplicado a los hijos de un contenedor, cada uno entra un
+   poco después que el anterior. Evita tener que escribir delays a mano. */
+.escalona > * { animation: brote .55s var(--ease-suave) both; }
+.escalona > *:nth-child(1) { animation-delay: .04s; }
+.escalona > *:nth-child(2) { animation-delay: .10s; }
+.escalona > *:nth-child(3) { animation-delay: .16s; }
+.escalona > *:nth-child(4) { animation-delay: .22s; }
+.escalona > *:nth-child(5) { animation-delay: .28s; }
+.escalona > *:nth-child(6) { animation-delay: .34s; }
+.escalona > *:nth-child(7) { animation-delay: .40s; }
+.escalona > *:nth-child(8) { animation-delay: .46s; }
+
+/* ---- Respeto por quien prefiere menos movimiento ---- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+}
+
