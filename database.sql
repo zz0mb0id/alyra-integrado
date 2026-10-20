@@ -79,6 +79,17 @@ CREATE TABLE IF NOT EXISTS sesiones (
   INDEX idx_sesiones_expira (expira_en)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Tokens de recuperación: solo se almacena el hash, son de un solo uso y expiran.
+CREATE TABLE IF NOT EXISTS recuperaciones_password (
+  token_hash CHAR(64) PRIMARY KEY,
+  usuario_id INT NOT NULL,
+  expira_en DATETIME NOT NULL,
+  creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_recuperacion_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+  INDEX idx_recuperacion_expira (expira_en),
+  INDEX idx_recuperacion_usuario (usuario_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- -----------------------------------------------------------------------------
 -- Tabla: publicaciones
 -- Qué guarda: cada nota del diario/comunidad. El contador `impacto` y
