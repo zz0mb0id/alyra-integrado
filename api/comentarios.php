@@ -39,6 +39,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     exit;
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
+    mismo_origen();
+    $yo = exigir_sesion($pdo);
+    $datos = recibir_json();
+    $id = isset($datos['id']) && ctype_digit((string)$datos['id']) ? (int)$datos['id'] : 0;
+    if ($id < 1) responder(['ok' => false, 'error' => 'Comentario no válido.'], 400);
+    $stmt = $pdo->prepare('SELECT c.usuario_id, c.publicacion_id, p.usuario_id AS autor_publicacion FROM comentarios c INNER JOIN publicaciones p ON p.id = c.publicacion_id WHERE c.id = ? LIMIT 1');
+    $stmt->execute([$id]);
+    $comentario = $stmt->fetch();
+    if (!$comentario) responder(['ok' => false, 'error' => 'Comentario no encontrado.'], 404);
+    if ((int)$comentario['usuario_id'] !== (int)$yo['id'] && (int)$comentario['autor_publicacion'] !== (int)$yo['id']) {
+        responder(['ok' => false, 'error' => 'Solo quien comentó o quien publicó puede borrar este comentario.'], 403);
+    }
+    try {
+        $pdo->beginTransaction();
+        $pdo->prepare('DELETE FROM comentarios WHERE id = ?')->execute([$id]);
+        $pdo->prepare('UPDATE publicaciones SET comentarios = GREATEST(comentarios - 1, 0) WHERE id = ?')->execute([(int)$comentario['publicacion_id']]);
+        $pdo->commit();
+        responder(['ok' => true, 'id' => $id, 'publicacion_id' => (int)$comentario['publicacion_id']]);
+    } catch (PDOException $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        responder(['ok' => false, 'error' => 'No se pudo borrar el comentario.'], 500);
+    }
+}
+
 /* ---------------------------------------------------------------- POST creación */
 exigir_metodo('POST');
 mismo_origen();
@@ -105,3 +130,4 @@ try {
     if ($pdo->inTransaction()) $pdo->rollBack();
     responder(['ok' => false, 'error' => 'No se pudo guardar el comentario.'], 500);
 }
+
