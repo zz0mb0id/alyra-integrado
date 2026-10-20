@@ -66,8 +66,29 @@
           <div class="field"><label for="login-pass">Contraseña</label><input id="login-pass" type="password"
               placeholder="••••••••"></div>
           <button class="btn btn-solid auth-submit" onclick="handleLogin()">Ingresar a Alyra</button>
+          <div class="auth-switch-line"><span onclick="mostrarRecuperacion()">¿Olvidaste tu contraseña?</span></div>
           <div class="auth-switch-line">¿No tienes cuenta? <span onclick="switchAuthTab('signup')">Regístrate</span>
           </div>
+        </div>
+
+        <div id="recovery-panel" class="hidden">
+          <h2>Recupera tu cuenta</h2>
+          <p class="hint">Te enviaremos un enlace si encontramos una cuenta con ese correo.</p>
+          <div class="error-msg" id="recovery-error"></div>
+          <div class="success-msg" id="recovery-success" role="status"></div>
+          <div class="field"><label for="recovery-email">Correo de tu cuenta</label><input id="recovery-email" type="email" placeholder="tu@correo.com" autocomplete="email"></div>
+          <button class="btn btn-solid auth-submit" id="recovery-submit" onclick="solicitarRecuperacion()">Enviar enlace</button>
+          <div class="auth-switch-line"><span onclick="volverLogin()">Volver a ingresar</span></div>
+        </div>
+
+        <div id="reset-panel" class="hidden">
+          <h2>Nueva contraseña</h2>
+          <p class="hint">Elige una contraseña de al menos 6 caracteres.</p>
+          <div class="error-msg" id="reset-error"></div>
+          <div class="success-msg" id="reset-success" role="status"></div>
+          <div class="field"><label for="reset-pass">Nueva contraseña</label><input id="reset-pass" type="password" minlength="6" autocomplete="new-password" placeholder="Mínimo 6 caracteres"></div>
+          <button class="btn btn-solid auth-submit" id="reset-submit" onclick="restablecerPassword()">Guardar contraseña</button>
+          <div class="auth-switch-line"><span onclick="volverLogin()">Volver a ingresar</span></div>
         </div>
 
         <div id="signup-panel" class="hidden">
@@ -535,6 +556,8 @@ conectada a MySQL. Sin ese backend, Alyra muestra un error y no guarda localment
       document.getElementById("tab-signup").classList.toggle("active", tab === "signup");
       document.getElementById("login-panel").classList.toggle("hidden", tab !== "login");
       document.getElementById("signup-panel").classList.toggle("hidden", tab !== "signup");
+      document.getElementById("recovery-panel").classList.add("hidden");
+      document.getElementById("reset-panel").classList.add("hidden");
       document.getElementById("login-error").style.display = "none";
       document.getElementById("signup-error").style.display = "none";
     }
@@ -542,6 +565,55 @@ conectada a MySQL. Sin ese backend, Alyra muestra un error y no guarda localment
       var el = document.getElementById(id);
       el.textContent = msg;
       el.style.display = "block";
+    }
+    function mostrarRecuperacion() {
+      document.getElementById("login-panel").classList.add("hidden");
+      document.getElementById("signup-panel").classList.add("hidden");
+      document.getElementById("recovery-panel").classList.remove("hidden");
+      document.getElementById("reset-panel").classList.add("hidden");
+      document.getElementById("tab-login").classList.add("active");
+      document.getElementById("tab-signup").classList.remove("active");
+      var email = document.getElementById("login-email").value.trim();
+      if (email) document.getElementById("recovery-email").value = email;
+    }
+    function volverLogin() {
+      switchAuthTab("login");
+      document.getElementById("recovery-success").style.display = "none";
+      document.getElementById("reset-success").style.display = "none";
+      var url = new URL(window.location.href);
+      url.searchParams.delete("restablecer");
+      window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+    }
+    function solicitarRecuperacion() {
+      var correo = document.getElementById("recovery-email").value.trim().toLowerCase();
+      if (!correo) { showError("recovery-error", "Escribe el correo de tu cuenta."); return; }
+      var boton = document.getElementById("recovery-submit");
+      boton.disabled = true;
+      apiPost("api/solicitar_recuperacion.php", { correo: correo })
+        .then(function (d) {
+          var aviso = document.getElementById("recovery-success");
+          aviso.textContent = d.mensaje || "Si el correo corresponde a una cuenta, enviaremos un enlace.";
+          aviso.style.display = "block";
+          document.getElementById("recovery-error").style.display = "none";
+        })
+        .catch(function (e) { showError("recovery-error", e.message); })
+        .then(function () { boton.disabled = false; });
+    }
+    function restablecerPassword() {
+      var token = new URL(window.location.href).searchParams.get("restablecer") || "";
+      var pass = document.getElementById("reset-pass").value;
+      if (pass.length < 6) { showError("reset-error", "La contraseña debe tener al menos 6 caracteres."); return; }
+      var boton = document.getElementById("reset-submit");
+      boton.disabled = true;
+      apiPost("api/restablecer_password.php", { token: token, contrasena: pass })
+        .then(function (d) {
+          document.getElementById("reset-success").textContent = d.mensaje || "Contraseña actualizada.";
+          document.getElementById("reset-success").style.display = "block";
+          document.getElementById("reset-error").style.display = "none";
+          document.getElementById("reset-pass").value = "";
+        })
+        .catch(function (e) { showError("reset-error", e.message); })
+        .then(function () { boton.disabled = false; });
     }
     /* Inicio de sesión.
        · Con backend: POST api/login.php — la base de datos valida con
@@ -598,7 +670,7 @@ conectada a MySQL. Sin ese backend, Alyra muestra un error y no guarda localment
         .then(function (d) {
           currentUser = d.usuario;
           enterApp();
-          showToast(d.mensaje || "Cuenta creada. Bienvenida a Alyra 🌱");
+          showToast(d.correoBienvenidaEnviado ? "Cuenta creada. Revisa tu correo 🌱" : "Cuenta creada. El correo de bienvenida está pendiente de configuración.");
         })
         .catch(function (e) { showError("signup-error", e.message); });
     }
@@ -883,6 +955,7 @@ conectada a MySQL. Sin ese backend, Alyra muestra un error y no guarda localment
         '<button class="impact-btn" onclick="toggleImpact(' + p.id + ')">' + ringsBadgeSVG(p.impact, p.reacted) + '<span class="impact-count">' + p.impact + '</span></button>' +
         '<button class="action-mini" type="button" onclick="toggleComentarios(' + p.id + ', this)" aria-expanded="false">💬 <span class="comments-count">' + p.comments + '</span></button>' +
         '<button class="action-mini ' + (p.rebloggedByMe ? 'on' : '') + '" onclick="toggleReblog(' + p.id + ')">♻️ ' + p.reblogs + '</button>' +
+        (currentUser && Number(currentUser.id) === Number(p.authorId) ? '<button class="action-mini delete-action" type="button" onclick="borrarPublicacion(' + p.id + ')" aria-label="Borrar publicación">Borrar</button>' : '') +
         '</div>' +
         '<section class="comments-panel hidden" data-post-id="' + p.id + '" aria-label="Comentarios de la publicación">' +
           '<div class="comments-list"><p class="comments-empty">Abre los comentarios para ver la conversación.</p></div>' +
@@ -903,10 +976,43 @@ conectada a MySQL. Sin ese backend, Alyra muestra un error y no guarda localment
       }
       contenedor.innerHTML = lista.map(function (c) {
         return '<article class="comment-item">' +
-          '<div class="comment-meta"><strong>' + esc(c.author || "Persona") + '</strong> <span>' + esc(c.handle || "") + ' · ' + esc(c.time || "ahora") + '</span></div>' +
+          '<div class="comment-meta"><strong>' + esc(c.author || "Persona") + '</strong> <span>' + esc(c.handle || "") + ' · ' + esc(c.time || "ahora") + '</span>' + (currentUser && (Number(currentUser.id) === Number(c.authorId) || Number(currentUser.id) === Number((posts.find(function (p) { return String(p.id) === String(panel.dataset.postId); }) || {}).authorId)) ? '<button class="comment-delete delete-action" type="button" onclick="borrarComentario(' + Number(c.id) + ', ' + Number(panel.dataset.postId) + ')" aria-label="Borrar comentario">Borrar</button>' : '') + '</div>' +
           '<p>' + esc(c.text || "") + '</p>' +
           '</article>';
       }).join("");
+    }
+    function borrarPublicacion(id) {
+      var p = posts.find(function (item) { return String(item.id) === String(id); });
+      if (!p || !currentUser || Number(p.authorId) !== Number(currentUser.id)) return;
+      if (!window.confirm("¿Borrar esta publicación y todos sus comentarios? Esta acción no se puede deshacer.")) return;
+      apiFetch("api/publicaciones.php", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: id }) })
+        .then(function () {
+          posts = posts.filter(function (item) { return String(item.id) !== String(id); });
+          delete comentariosCache[id];
+          renderFeed(); renderGrid(); renderProfileCard(); renderBlogPreview();
+          if (currentRoute === "profile") renderProfileView();
+          showToast("Publicación borrada");
+        }).catch(function (e) { showToast(e.message || "No se pudo borrar la publicación."); });
+    }
+    function borrarComentario(id, postId) {
+      var p = posts.find(function (item) { return String(item.id) === String(postId); });
+      var lista = comentariosCache[postId] || [];
+      var c = lista.find(function (item) { return String(item.id) === String(id); });
+      if (!c || !currentUser || (Number(c.authorId) !== Number(currentUser.id) && (!p || Number(p.authorId) !== Number(currentUser.id)))) return;
+      if (!window.confirm("¿Borrar este comentario?")) return;
+      apiFetch("api/comentarios.php", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: id }) })
+        .then(function () {
+          comentariosCache[postId] = lista.filter(function (item) { return String(item.id) !== String(id); });
+          if (p) p.comments = Math.max(0, Number(p.comments || 0) - 1);
+          document.querySelectorAll('.comments-panel[data-post-id="' + postId + '"]').forEach(function (panel) { renderComentarios(panel, comentariosCache[postId]); });
+          document.querySelectorAll('.post-card').forEach(function (card) {
+            if (card.querySelector('.comments-panel[data-post-id="' + postId + '"]')) {
+              var count = card.querySelector('.comments-count'); if (count) count.textContent = String(p ? p.comments : comentariosCache[postId].length);
+            }
+          });
+          renderBlogPreview();
+          showToast("Comentario borrado");
+        }).catch(function (e) { showToast(e.message || "No se pudo borrar el comentario."); });
     }
     function toggleComentarios(id, boton) {
       var tarjeta = boton && boton.closest ? boton.closest(".post-card") : null;
@@ -1467,6 +1573,14 @@ conectada a MySQL. Sin ese backend, Alyra muestra un error y no guarda localment
           refreshSession();
         });
     }
+    var tokenRecuperacion = new URL(window.location.href).searchParams.get("restablecer");
+    if (tokenRecuperacion) {
+      openAuth("Restablece tu contraseña para volver a Alyra.", null, "login");
+      document.getElementById("login-panel").classList.add("hidden");
+      document.getElementById("signup-panel").classList.add("hidden");
+      document.getElementById("recovery-panel").classList.add("hidden");
+      document.getElementById("reset-panel").classList.remove("hidden");
+    }
     renderMemberCount();
     refreshSession();
     navigateTo("home");
@@ -1492,3 +1606,4 @@ conectada a MySQL. Sin ese backend, Alyra muestra un error y no guarda localment
 </body>
 
 </html>
+
