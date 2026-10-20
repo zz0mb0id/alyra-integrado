@@ -21,6 +21,8 @@ $rutas = [
     'api/publicaciones.php' => __DIR__ . '/publicaciones.php',
     'api/reblog.php' => __DIR__ . '/reblog.php',
     'api/registro.php' => __DIR__ . '/registro.php',
+    'api/solicitar_recuperacion.php' => __DIR__ . '/solicitar_recuperacion.php',
+    'api/restablecer_password.php' => __DIR__ . '/restablecer_password.php',
     'api/sesion.php' => __DIR__ . '/sesion.php',
     'api/subir_media.php' => __DIR__ . '/subir_media.php',
     'juego/index.php' => dirname(__DIR__) . '/juego/index.php',
@@ -40,3 +42,4 @@ if (!isset($rutas[$handler])) {
 }
 
 require $rutas[$handler];
+
