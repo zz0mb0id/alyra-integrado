@@ -138,7 +138,8 @@ const SPECIES = [
     ],
     minijuego:{
       tipo:'ritmo', nombreJuego:'Trepa el árbol',
-      zonaBuena:[42,58], velocidad:1200, intentosNecesarios:5, intentosMax:8,
+      // Ciclo más lento y zona segura más amplia para que principiantes y niños puedan reaccionar.
+      zonaBuena:[38,62], velocidad:3000, intentosNecesarios:5, intentosMax:8,
       comoJugar:'La marca se mueve de un lado a otro de la rama. Toca "¡Ahora!" justo cuando la marca esté sobre la zona verde (segura) para que el oso alcance la fruta sin resbalar.',
       comoGanar:'Acierta el momento justo 5 veces antes de agotar los 8 intentos.'
     },
@@ -1103,6 +1104,7 @@ function abrirMinijuego(id){
   montarComboBadge();
 
   gameOverlay.classList.add('open');
+  gameOverlay.classList.toggle('game-ritmo', cfg.tipo === 'ritmo');
 }
 
 /* montarComboBadge: el indicador de racha vive dentro del tablero, así se
