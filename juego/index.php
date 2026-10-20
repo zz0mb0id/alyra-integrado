@@ -57,6 +57,8 @@ if ($jugadorLogueado) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Base estable para recursos y endpoints cuando Vercel sirve este HTML desde su enrutador PHP. -->
+<base href="/juego/">
 <title>Alyra — Diario de campo viviente</title>
 
 <!-- Tipografías del diseño original -->
