@@ -9,6 +9,7 @@ El proyecto requiere **MySQL y una sola cuenta compartida**: quien se registra e
 - **Blog/comunidad**: publicaciones públicas con texto, etiquetas, emoji o foto/video, comentarios persistidos, impacto (♻️), reblogs, perfil editable y subida de archivos. El perfil privado lo excluye de las sugerencias de comunidad; no oculta sus publicaciones.
 - **Juego**: 6 regiones de Colombia, 19 especies con datos reales, 8 minijuegos y salud por especie que empieza en 0.
 - **Backend PHP + MySQL**: API en `api/`, sesión por token guardado en la base de datos con cookie HttpOnly, contraseñas con `password_hash()`.
+- **Seguridad de cuenta**: borrado autorizado de publicaciones/comentarios, restablecimiento de contraseña de un solo uso y correo de bienvenida.
 
 ## Estructura
 
@@ -18,6 +19,7 @@ alyra.css           Estilos de la página principal
 herbario.css        Sistema de diseño compartido (colores, tipografía, animaciones)
 config.php          Conexión a MySQL + sesión compartida + helpers de la API
 database.sql        Esquema UNIFICADO (usuarios, sesiones, publicaciones, especies…)
+migration_password_recovery.sql  Tabla adicional para enlaces de recuperación
 test_api.py         Prueba integral del backend (53 comprobaciones)
 api/
   sesion.php        GET  ¿quién está conectado?
@@ -30,6 +32,8 @@ api/
   comunidad.php     GET  contador de miembros y cuentas sugeridas
   publicaciones.php GET feed público / POST crea publicación
   comentarios.php  GET lista comentarios / POST guarda comentario y actualiza contador
+  solicitar_recuperacion.php POST solicita por correo enlace de recuperación
+  restablecer_password.php POST valida token de un solo uso e invalida sesiones
   impacto.php       POST alterna el impacto de una publicación
   reblog.php        POST alterna el reblog
   subir_media.php   POST sube una foto o video a uploads/
@@ -58,6 +62,9 @@ Esta copia combina la interfaz y el backend PHP/MySQL con las funciones de comun
 - El comentario y el contador de la publicación se guardan dentro de una transacción.
 - El inicio de sesión se persiste en la tabla `sesiones` mediante un token aleatorio y una cookie `HttpOnly`; `api/sesion.php` restaura la cuenta al volver a abrir la página.
 - La interfaz escapa el texto de autor, fecha y comentario antes de insertarlo en el HTML.
+- Solo el autor de una publicación puede borrarla; quien escribió un comentario o el autor de la publicación puede borrarlo. El contador se actualiza en transacción.
+- La recuperación guarda únicamente el hash SHA-256 del token, que vence en 30 minutos y se invalida tras cambiar la contraseña; también cierra las sesiones activas de esa cuenta.
+- Los correos transaccionales usan Resend. No se envía ni se solicita por correo ninguna contraseña.
 
 **Verificación de TiDB:** la base nueva `guardianes_colombia` tiene las 10 tablas del esquema y 19 especies. Al inicializarla había 0 usuarios y 0 filas de progreso; no se tocaron las bases internas ni la base `test`.
 
@@ -104,6 +111,10 @@ instancia. La conexión usa TLS y el certificado raíz del runtime. No se guarda
 credenciales en Git. Mientras no estén configuradas, las funciones responden
 con un error 503 legible; el feed público necesita una conexión MySQL activa.
 
+Para habilitar correo de bienvenida y recuperación, configura en Vercel Production (y Preview si aplica) `RESEND_API_KEY`, `ALYRA_FROM_EMAIL` (remitente validado en Resend, por ejemplo `Alyra <hola@tudominio.com>`) y `ALYRA_PUBLIC_URL` (`https://alyra-recicla.vercel.app`). Sin estas variables el registro sigue funcionando, pero el correo no se envía. No pongas la clave en Git ni la compartas por chat. Tras añadirlas, crea un nuevo deployment para que las funciones las reciban.
+
+En la base TiDB existente, ejecuta una vez `migration_password_recovery.sql` en su SQL Editor para crear la tabla de tokens. No borra ni modifica las demás tablas o datos. `database.sql` ya incluye esa tabla para instalaciones nuevas.
+
 TiDB Cloud Starter es una opción MySQL-compatible con una cuota gratuita. Al
 crear la instancia, deja el límite de gasto mensual en `0`: al agotarse la
 cuota, TiDB limita o pausa el servicio en vez de cobrar excedentes. Revisa las
@@ -148,3 +159,4 @@ Vercel, las rutas PHP usan el runtime configurado en `vercel.json`.
 ## Diseño
 
 Dirección de arte de **herbario botánico**: papel crema, tinta cálida, aguadas de acuarela por región y animaciones suaves. Tipografías: Fraunces, Hanken Grotesk y Caveat. El sistema de diseño (colores, radios, sombras y animaciones) vive en `herbario.css` y lo usan tanto la página principal como el juego.
+
