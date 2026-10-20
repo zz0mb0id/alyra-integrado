@@ -31,10 +31,20 @@ if (empty($resultado['ok'])) {
 }
 
 $u = $resultado['usuario'];
+$correoBienvenidaEnviado = false;
+if (isset($resultado['mensaje']) && strpos($resultado['mensaje'], '¡Cuenta creada!') === 0) {
+    $nombreSeguro = escapar($u['nombre']);
+    $correoBienvenidaEnviado = enviar_correo_alyra(
+        $u['correo'],
+        '¡Bienvenida a Alyra!',
+        '<div style="font-family:Arial,sans-serif;color:#26352b;line-height:1.6"><h1>¡Bienvenida a Alyra, ' . $nombreSeguro . '!</h1><p>Tu cuenta ya está creada. Puedes iniciar sesión y compartir tus ideas para cuidar el planeta.</p><p>Gracias por sumarte a esta comunidad 🌱</p></div>'
+    );
+}
 responder([
     'ok'       => true,
     'usuario'  => usuario_json($u),
     'mensaje'  => $resultado['mensaje'],
+    'correoBienvenidaEnviado' => $correoBienvenidaEnviado,
     'jugador'  => ['id' => (int)$u['id'], 'nombre' => $u['nombre']],
 ]);
 
