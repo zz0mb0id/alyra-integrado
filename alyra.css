@@ -1196,8 +1196,9 @@ label {
 }
 
 .blog-hero-logo {
-    height: 64px;
-    width: auto;
+    width: clamp(144px, 16vw, 184px);
+    max-width: 50vw;
+    height: auto;
     display: block;
     margin: 0 auto;
 }
