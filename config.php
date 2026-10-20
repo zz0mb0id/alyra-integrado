@@ -67,8 +67,16 @@ try {
     if (getenv('VERCEL')) {
         // TiDB Cloud Starter exige TLS. PHP en Vercel usa el bundle CA de Debian;
         // DB_SSL_CA permite indicar otra ruta si el runtime/proveedor lo requiere.
-        $opcionesPdo[PDO::MYSQL_ATTR_SSL_CA] = getenv('DB_SSL_CA') ?: '/etc/ssl/certs/ca-certificates.crt';
-        $opcionesPdo[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = true;
+        // PHP 8.5 movió estos atributos a Pdo\\Mysql; el fallback mantiene
+        // compatibilidad con runtimes anteriores sin emitir deprecaciones.
+        $sslCaAttr = class_exists('Pdo\\Mysql')
+            ? constant('Pdo\\Mysql::ATTR_SSL_CA')
+            : PDO::MYSQL_ATTR_SSL_CA;
+        $sslVerifyAttr = class_exists('Pdo\\Mysql')
+            ? constant('Pdo\\Mysql::ATTR_SSL_VERIFY_SERVER_CERT')
+            : PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT;
+        $opcionesPdo[$sslCaAttr] = getenv('DB_SSL_CA') ?: '/etc/ssl/certs/ca-certificates.crt';
+        $opcionesPdo[$sslVerifyAttr] = true;
     }
     $pdo = new PDO(
         "mysql:host={$dbHost};port={$dbPort};dbname={$dbName};charset=utf8mb4",
