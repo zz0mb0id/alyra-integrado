@@ -2521,8 +2521,9 @@ label {
 .game-frame iframe {
     display: block;
     width: 100%;
-    height: calc(100vh - 170px);
-    min-height: 560px;
+    height: 90vh;
+    min-height: 700px;
+    max-height: 980px;
     border: 0;
 }
 
@@ -2557,7 +2558,9 @@ label {
     }
 
     .game-frame iframe {
-        height: 72vh;
+        height: 84vh;
+        min-height: 640px;
+        max-height: 900px;
     }
 }
 
