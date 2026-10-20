@@ -515,6 +515,17 @@ label {
     display: none;
     animation: temblorSuave .5s var(--ease-suave);
 }
+.success-msg {
+    display: none;
+    color: var(--hoja-900);
+    background: var(--hoja-100);
+    border: 1px solid var(--hoja-300);
+    border-radius: var(--r-suave);
+    padding: 10px 15px;
+    margin-bottom: 15px;
+    font-size: 13.5px;
+    line-height: 1.5;
+}
 
 .hint {
     font-size: 13.5px;
@@ -1458,6 +1469,17 @@ label {
     padding: 13px 20px 18px;
     border-top: 1px solid var(--linea);
     margin-top: 12px;
+}
+.delete-action {
+    margin-left: auto;
+    color: var(--mal, #a33a2b) !important;
+    font-size: 12px;
+}
+.comment-delete {
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    text-decoration: underline;
 }
 
 .impact-btn {
