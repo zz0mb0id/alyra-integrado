@@ -88,6 +88,23 @@ if ($metodo === 'GET') {
     responder(['ok' => true, 'publicaciones' => $lista]);
 }
 
+if ($metodo === 'DELETE') {
+    mismo_origen();
+    $yo = exigir_sesion($pdo);
+    $datos = recibir_json();
+    $id = isset($datos['id']) && ctype_digit((string)$datos['id']) ? (int)$datos['id'] : 0;
+    if ($id < 1) responder(['ok' => false, 'error' => 'Publicación no válida.'], 400);
+    $stmt = $pdo->prepare('SELECT usuario_id FROM publicaciones WHERE id = ? LIMIT 1');
+    $stmt->execute([$id]);
+    $publicacion = $stmt->fetch();
+    if (!$publicacion) responder(['ok' => false, 'error' => 'Publicación no encontrada.'], 404);
+    if ((int)$publicacion['usuario_id'] !== (int)$yo['id']) {
+        responder(['ok' => false, 'error' => 'Solo quien publicó puede borrar esta publicación.'], 403);
+    }
+    $pdo->prepare('DELETE FROM publicaciones WHERE id = ?')->execute([$id]);
+    responder(['ok' => true, 'id' => $id]);
+}
+
 /* ---------------------------------------------------------------- creación */
 exigir_metodo('POST');
 mismo_origen();
