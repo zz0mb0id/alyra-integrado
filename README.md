@@ -66,7 +66,7 @@ Esta copia combina la interfaz y el backend PHP/MySQL con las funciones de comun
 - La recuperación guarda únicamente el hash SHA-256 del token, que vence en 30 minutos y se invalida tras cambiar la contraseña; también cierra las sesiones activas de esa cuenta.
 - Los correos transaccionales usan Resend. No se envía ni se solicita por correo ninguna contraseña.
 
-**Verificación de TiDB:** la base nueva `guardianes_colombia` tiene las 10 tablas del esquema y 19 especies. Al inicializarla había 0 usuarios y 0 filas de progreso; no se tocaron las bases internas ni la base `test`.
+**Verificación previa de TiDB:** `guardianes_colombia` tenía 10 tablas y 19 especies. Este cambio agrega `recuperaciones_password`; su migración aún debe ejecutarse en esa instancia. Al inicializarla había 0 usuarios y 0 filas de progreso; no se tocaron las bases internas ni la base `test`.
 
 El juego mantiene el progreso antiguo en `localStorage`. Al usar el juego PHP e iniciar sesión desde el mismo navegador, si el nombre local coincide con el de la cuenta, se pregunta si se quiere copiar ese progreso a MySQL. La importación solo agrega especies que todavía no tienen progreso en esa cuenta. Si se rechaza, la copia local permanece intacta.
 
