@@ -2005,6 +2005,8 @@ const CLAVE_CUENTA   = 'alyra_guardian'; // cuenta local del jugador
 /* ¿Estamos sin PHP? Si el puente no definió la constante, asumimos que sí
    (es el caso de abrir el .html suelto). */
 const SIN_SERVIDOR = (typeof MODO_ESTATICO !== 'undefined') ? MODO_ESTATICO : true;
+let ID_USUARIO_ACTUAL = (typeof ID_USUARIO !== 'undefined') ? Number(ID_USUARIO) : 0;
+let NOMBRE_JUGADOR_ACTUAL = (typeof NOMBRE_JUGADOR !== 'undefined') ? NOMBRE_JUGADOR : '';
 
 /* guardarProgresoLocal: vuelca TODO el estado actual a localStorage, con
    el mismo formato que usa PROGRESO_INICIAL, para que al recargar la
@@ -2048,6 +2050,53 @@ async function guardarProgreso(especieId, salud, gano, extinto){
   }
 }
 
+/* Migra, con confirmación explícita, el progreso local de la versión estática
+   a la cuenta del servidor. Solo ofrece la importación si el nombre local y el
+   nombre de la cuenta iniciada coinciden. El endpoint inserta solo especies
+   que aún no tengan fila, así que nunca pisa progreso ya guardado en MySQL. */
+async function importarProgresoLocalSiSeConfirma(){
+  if(SIN_SERVIDOR || !ID_USUARIO_ACTUAL) return;
+
+  let cuentaLocal = null;
+  let progresoLocal = null;
+  try{
+    cuentaLocal = JSON.parse(localStorage.getItem(CLAVE_CUENTA) || 'null');
+    progresoLocal = JSON.parse(localStorage.getItem(CLAVE_PROGRESO) || 'null');
+  }catch(err){ return; }
+
+  const nombreLocal = (cuentaLocal && typeof cuentaLocal.nombre === 'string' ? cuentaLocal.nombre : '').trim().toLocaleLowerCase();
+  const nombreServidor = (typeof NOMBRE_JUGADOR_ACTUAL === 'string' ? NOMBRE_JUGADOR_ACTUAL : '').trim().toLocaleLowerCase();
+  if(!nombreLocal || nombreLocal !== nombreServidor || !progresoLocal || typeof progresoLocal !== 'object') return;
+
+  const entradas = Object.entries(progresoLocal).filter(([id, datos]) =>
+    /^[a-z0-9_-]{1,30}$/i.test(id) && datos && typeof datos === 'object'
+  );
+  if(!entradas.length) return;
+
+  const marca = `alyra_progreso_migracion_${ID_USUARIO}`;
+  try{ if(localStorage.getItem(marca)) return; }catch(err){ return; }
+
+  if(!window.confirm(`Encontré progreso de ${cuentaLocal.nombre} guardado en este navegador. ¿Quieres copiarlo a la cuenta Alyra que acabas de iniciar? El progreso existente en MySQL se conservará.`)){
+    try{ localStorage.setItem(marca, 'omitido'); }catch(err){ /* el avance local sigue intacto */ }
+    return;
+  }
+
+  try{
+    const respuesta = await fetch('import_progress.php', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ progreso: Object.fromEntries(entradas) })
+    });
+    const resultado = await respuesta.json();
+    if(!respuesta.ok || !resultado.ok) throw new Error('No se pudo importar el progreso.');
+    localStorage.setItem(marca, 'completado');
+    if(resultado.importados > 0) window.location.reload();
+    else showToast('Tu progreso local sigue guardado y MySQL ya tenía el avance de esta cuenta.');
+  }catch(err){
+    showToast('No pude copiar tu progreso todavía. Sigue guardado en este navegador.');
+  }
+}
+
 /* ---- FORMULARIO DE REGISTRO (overlay obligatorio antes de jugar) ----
    Intercepta el envío del formulario para mandarlo por fetch a
    register.php SIN recargar la página. Si la respuesta es exitosa,
@@ -2060,7 +2109,11 @@ const registroSubmit  = document.getElementById('registroSubmit');
 
 /* sesionIniciada: deja la interfaz como "jugando con cuenta". Lo usan por
    igual el registro contra PHP y el registro local sin servidor. */
-function sesionIniciada(nombre, mensaje){
+function sesionIniciada(nombre, mensaje, idUsuario = 0){
+  if(!SIN_SERVIDOR && idUsuario){
+    ID_USUARIO_ACTUAL = Number(idUsuario);
+    NOMBRE_JUGADOR_ACTUAL = nombre;
+  }
   registroOverlay.classList.remove('open');
   document.getElementById('sesionBar').classList.add('visible');
   document.getElementById('sesionNombre').textContent = nombre;
@@ -2068,6 +2121,7 @@ function sesionIniciada(nombre, mensaje){
   showToast(mensaje);
   Object.values(movementTimers).forEach(t=> clearTimeout(t));
   buildMap();
+  if(!SIN_SERVIDOR && ID_USUARIO_ACTUAL) importarProgresoLocalSiSeConfirma();
 }
 
 if(registroForm){
@@ -2105,7 +2159,7 @@ if(registroForm){
       const resultado = await respuesta.json();
 
       if(resultado.ok){
-        sesionIniciada(resultado.jugador.nombre, resultado.mensaje);
+        sesionIniciada(resultado.jugador.nombre, resultado.mensaje, resultado.jugador.id);
       } else {
         registroError.textContent = resultado.mensaje || 'No se pudo completar el registro.';
       }
@@ -2152,6 +2206,6 @@ if(SIN_SERVIDOR){
    El mapa se construye siempre: crear cuenta es opcional (solo sirve para
    ponerle nombre al diario y conservar el progreso). */
 buildMap();
+importarProgresoLocalSiSeConfirma();
 document.getElementById('registroCerrar').addEventListener('click', ()=> registroOverlay.classList.remove('open'));
 document.getElementById('abrirRegistro').addEventListener('click', (e)=>{ e.preventDefault(); registroOverlay.classList.add('open'); });
-

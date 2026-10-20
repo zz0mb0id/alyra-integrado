@@ -220,6 +220,7 @@ if ($jugadorLogueado) {
     const MODO_ESTATICO     = false;
     const JUGADOR_LOGUEADO  = <?php echo json_encode($jugadorLogueado); ?>;
     const NOMBRE_JUGADOR    = <?php echo json_encode($nombreJugador, JSON_UNESCAPED_UNICODE); ?>;
+    const ID_USUARIO        = <?php echo $usuario ? (int)$usuario['id'] : 0; ?>;
     // (object) para que sin progreso llegue {} y no []: el juego indexa por id de especie.
     const PROGRESO_INICIAL  = <?php echo json_encode((object)$progresoInicial, JSON_UNESCAPED_UNICODE); ?>;
   </script>
@@ -228,4 +229,3 @@ if ($jugadorLogueado) {
   <script src="script.js"></script>
 </body>
 </html>
-

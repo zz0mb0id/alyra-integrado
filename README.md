@@ -43,6 +43,7 @@ juego/
   register.php      Registro de jugadores -> llama a api/registro.php
   save_progress.php Guarda el progreso en progreso_especie
   get_progress.php  Lee el progreso guardado
+  import_progress.php Copia progreso local previa confirmación; no sobrescribe filas MySQL
   logout.php        Cierra la sesión compartida
 ```
 
@@ -58,7 +59,9 @@ Esta copia combina la interfaz y el backend PHP/MySQL con las funciones de comun
 - El inicio de sesión se persiste en la tabla `sesiones` mediante un token aleatorio y una cookie `HttpOnly`; `api/sesion.php` restaura la cuenta al volver a abrir la página.
 - La interfaz escapa el texto de autor, fecha y comentario antes de insertarlo en el HTML.
 
-**Nota de pruebas:** `test_api.py` requiere un servidor HTTP PHP, `pdo_mysql` y MySQL con `database.sql` importado. Esta revisión no ejecutó pruebas ni importó el esquema.
+**Verificación de TiDB:** la base nueva `guardianes_colombia` tiene las 10 tablas del esquema y 19 especies. Al inicializarla había 0 usuarios y 0 filas de progreso; no se tocaron las bases internas ni la base `test`.
+
+El juego mantiene el progreso antiguo en `localStorage`. Al usar el juego PHP e iniciar sesión desde el mismo navegador, si el nombre local coincide con el de la cuenta, se pregunta si se quiere copiar ese progreso a MySQL. La importación solo agrega especies que todavía no tienen progreso en esa cuenta. Si se rechaza, la copia local permanece intacta.
 
 ## Cómo ejecutarlo en local (XAMPP)
 
@@ -86,22 +89,52 @@ ALYRA_URL=http://127.0.0.1:8765 python test_api.py   # otro puerto
 
 Recorre registro, sesión, publicación, subida de foto, impactos, reblogs, perfil, contraseña, privacidad, sesión compartida con el juego y borrado en cascada.
 
-## Cómo publicarlo (hosting con PHP + MySQL)
+## Publicar en Vercel con PHP + MySQL
+
+`vercel.json` configura el runtime comunitario `vercel-php` y un único
+`api/index.php` enruta los endpoints del blog y del juego. Así se conserva el
+límite de funciones del plan Hobby. Las rutas estáticas del juego continúan
+sirviéndose desde `juego/`.
+
+En Vercel ya están creadas `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` y `DB_PASS`
+para Production. Después de cambiar la contraseña, actualiza `DB_PASS` y vuelve
+a desplegar. Para TiDB Cloud
+Starter, `DB_PORT` es `4000` y el nombre de usuario incluye el prefijo de la
+instancia. La conexión usa TLS y el certificado raíz del runtime. No se guardan
+credenciales en Git. Mientras no estén configuradas, las funciones responden
+con un error 503 legible; el feed público necesita una conexión MySQL activa.
+
+TiDB Cloud Starter es una opción MySQL-compatible con una cuota gratuita. Al
+crear la instancia, deja el límite de gasto mensual en `0`: al agotarse la
+cuota, TiDB limita o pausa el servicio en vez de cobrar excedentes. Revisa las
+condiciones y la cuota vigente en el panel antes de crearla.
+
+El esquema `database.sql` usa `CREATE TABLE IF NOT EXISTS` y actualiza el
+catálogo de especies sin borrar las filas de `progreso_especie`. Se importó en
+la base nueva de TiDB después de confirmar que estaba vacía. No importes este
+esquema en otra base con datos sin respaldarla y revisar su estructura.
+
+Las fotos y los videos todavía requieren conectar Vercel Blob. Vercel no ofrece
+disco persistente a las Functions; en esta configuración el endpoint los
+rechaza con un mensaje claro, mientras que las publicaciones de texto siguen
+el flujo normal. No se ha creado un Blob Store ni se han añadido credenciales.
+
+### Alternativa: hosting con PHP + MySQL
 
 Sirve con **InfinityFree, Hostinger, cPanel** o cualquier hosting que ejecute PHP 7.4+ con `pdo_mysql` y MySQL.
 
 1. **Crea la base de datos** desde el panel del hosting (te dará un nombre como `if0_123456_alyra`) y un usuario/contraseña.
 2. **Importa `database.sql`** con phpMyAdmin dentro de esa base de datos. En hosting ya existe, así que las líneas `CREATE DATABASE` del archivo vienen comentadas a propósito.
 3. **Sube todo el contenido de esta carpeta** a `htdocs/` (FTP del panel o el gestor de archivos). Debe quedar así: `alyra_1.html` en la raíz, junto a `config.php`, con `api/`, `juego/` y `uploads/` al lado.
-4. **Edita `config.php`** con los datos del paso 1 (o define las variables de entorno `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS` desde el panel, que tienen prioridad).
+4. **Edita `config.php`** con los datos del paso 1 (o define `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS` desde el panel, que tienen prioridad).
 5. **Da permisos de escritura a `uploads/`** (755 suele bastar). Si el hosting no deja escribir ahí, el servidor responde un mensaje claro al intentar subir una foto.
 6. Abre tu dominio: el blog carga las publicaciones desde la base y el juego pide cuenta (o usa la que ya tengas del blog).
 
 ## Requisito de hosting
 
-El blog y el juego integrado requieren un servidor que ejecute PHP y tenga `pdo_mysql` conectado a MySQL. En GitHub Pages, Vercel estático o al abrir el HTML con doble clic, el feed muestra un aviso de backend no disponible y no guarda publicaciones localmente. `juego/index.html` se conserva como archivo del prototipo, pero Alyra no lo carga automáticamente como reemplazo del juego conectado a MySQL.
-
-`.vercelignore` excluye los archivos PHP y el esquema para evitar exponer configuración en un despliegue estático; por eso Vercel estático no es un hosting válido para la aplicación con base de datos.
+El blog y el juego requieren PHP con `pdo_mysql` y una base MySQL accesible. En
+GitHub Pages o al abrir el HTML con doble clic no se pueden guardar datos. En
+Vercel, las rutas PHP usan el runtime configurado en `vercel.json`.
 
 ## Seguridad incluida
 
@@ -115,4 +148,3 @@ El blog y el juego integrado requieren un servidor que ejecute PHP y tenga `pdo_
 ## Diseño
 
 Dirección de arte de **herbario botánico**: papel crema, tinta cálida, aguadas de acuarela por región y animaciones suaves. Tipografías: Fraunces, Hanken Grotesk y Caveat. El sistema de diseño (colores, radios, sombras y animaciones) vive en `herbario.css` y lo usan tanto la página principal como el juego.
-

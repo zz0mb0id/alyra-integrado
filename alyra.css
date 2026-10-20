@@ -848,6 +848,15 @@ label {
     animation: entraPapel .7s var(--ease-suave) both;
 }
 
+.topbar-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    width: 100%;
+    min-width: 0;
+}
+
 /* La regla de abajo es un trazo de tinta, no una línea de software */
 .topbar::after {
     content: "";
@@ -2553,4 +2562,3 @@ label {
   .comment-form { align-items: stretch; flex-direction: column; }
   .comment-form button { align-self: flex-end; }
 }
-

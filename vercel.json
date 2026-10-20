@@ -2,8 +2,19 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "cleanUrls": false,
   "trailingSlash": false,
+  "functions": {
+    "api/index.php": {
+      "runtime": "vercel-php@0.9.0",
+      "includeFiles": [
+        "config.php",
+        "api/**/*.php",
+        "juego/**/*.php"
+      ]
+    }
+  },
   "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/index.php?handler=api/:path*" },
+    { "source": "/juego/:path*.php", "destination": "/api/index.php?handler=juego/:path*.php" },
     { "source": "/", "destination": "/alyra_1.html" }
   ]
 }
-

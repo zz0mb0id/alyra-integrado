@@ -17,11 +17,9 @@
  *   responder($datos, $cod)   responde JSON y termina
  *   mismo_origen()            defensa anti-CSRF: rechaza POST de otro origen
  *
- * ¿Qué hay que cambiar? Solo los cuatro datos de abajo según tu servidor
- * (host, nombre de la base, usuario y contraseña de MySQL). En hosting
- * compartido esos datos los da el panel; también se pueden definir como
- * variables de entorno (DB_HOST, DB_NAME, DB_USER, DB_PASS) para no editar
- * este archivo en el servidor.
+ * ¿Qué hay que configurar? Host, puerto, nombre de base, usuario y contraseña
+ * según tu proveedor. En Vercel se definen como variables de entorno
+ * (DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS), nunca se guardan en Git.
  * =============================================================================
  */
 
@@ -30,6 +28,16 @@ $dbHost = getenv('DB_HOST') ?: 'localhost';
 $dbName = getenv('DB_NAME') ?: 'guardianes_colombia';
 $dbUser = getenv('DB_USER') ?: 'root';
 $dbPass = getenv('DB_PASS') !== false ? getenv('DB_PASS') : '';
+$dbPort = getenv('DB_PORT') ?: '3306';
+
+// Vercel no incluye una base local: exige que la conexión MySQL se configure
+// explícitamente en el panel antes de servir las funciones del backend.
+if (getenv('VERCEL') && (!getenv('DB_HOST') || !getenv('DB_NAME') || !getenv('DB_USER') || getenv('DB_PASS') === false || !getenv('DB_PORT'))) {
+    http_response_code(503);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['ok' => false, 'error' => 'Falta configurar la conexión MySQL del proyecto.']);
+    exit;
+}
 
 // Constantes de la sesión compartida.
 define('ALYRA_COOKIE',    'alyra_sesion');            // nombre de la cookie
@@ -47,11 +55,7 @@ date_default_timezone_set('America/Bogota');
 try {
     // PDO = capa de PHP para hablar con MySQL de forma segura. "utf8mb4" para
     // que tildes, ñ y emojis se guarden bien.
-    $pdo = new PDO(
-        "mysql:host={$dbHost};dbname={$dbName};charset=utf8mb4",
-        $dbUser,
-        $dbPass,
-        [
+    $opcionesPdo = [
             // Si algo sale mal, PDO lanza una excepción en vez de fallar en silencio.
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             // Los resultados llegan como arreglos asociativos: $fila['nombre'].
@@ -59,7 +63,18 @@ try {
             // Preparadas reales de MySQL: los ? se sustituyen en la base de datos,
             // no en PHP, que es lo que hace imposible una inyección SQL.
             PDO::ATTR_EMULATE_PREPARES => false,
-        ]
+        ];
+    if (getenv('VERCEL')) {
+        // TiDB Cloud Starter exige TLS. PHP en Vercel usa el bundle CA de Debian;
+        // DB_SSL_CA permite indicar otra ruta si el runtime/proveedor lo requiere.
+        $opcionesPdo[PDO::MYSQL_ATTR_SSL_CA] = getenv('DB_SSL_CA') ?: '/etc/ssl/certs/ca-certificates.crt';
+        $opcionesPdo[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = true;
+    }
+    $pdo = new PDO(
+        "mysql:host={$dbHost};port={$dbPort};dbname={$dbName};charset=utf8mb4",
+        $dbUser,
+        $dbPass,
+        $opcionesPdo
     );
     // Que NOW() de MySQL use la misma zona que PHP (America/Bogota = UTC-5).
     $pdo->exec("SET time_zone = '-05:00'");
@@ -387,4 +402,3 @@ function usuario_json($u)
         'creado'  => $u['creado_en'] ?? '',
     ];
 }
-

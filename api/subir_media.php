@@ -63,6 +63,17 @@ if ($tipo === 'imagen') {
     }
 }
 
+// El disco de una Function de Vercel no es almacenamiento persistente y la
+// petición pasa por un límite de tamaño. No aceptar fotos/videos que luego
+// desaparecerían; cuando se conecte Vercel Blob, se cambia este tramo a
+// cargas directas con token temporal.
+if (getenv('VERCEL')) {
+    responder([
+        'ok' => false,
+        'error' => 'La carga de fotos y videos requiere conectar un almacenamiento persistente (Vercel Blob). Las publicaciones de texto siguen disponibles.',
+    ], 503);
+}
+
 // ---- Carpeta de destino ----
 $destinoDir = __DIR__ . '/../uploads';
 if (!is_dir($destinoDir)) {
@@ -92,4 +103,3 @@ responder([
     'url'  => 'uploads/' . $nombreNuevo,
     'tipo' => $tipo,
 ]);
-
