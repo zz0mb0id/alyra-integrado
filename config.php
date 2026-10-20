@@ -280,6 +280,43 @@ function escapar($texto)
     return htmlspecialchars((string)$texto, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
+/** Envío opcional de correo transaccional mediante Resend (sin dependencias). */
+function enviar_correo_alyra($destino, $asunto, $html)
+{
+    $apiKey = getenv('RESEND_API_KEY');
+    $remitente = getenv('ALYRA_FROM_EMAIL');
+    if (!$apiKey || !$remitente || !function_exists('curl_init')) return false;
+    $payload = json_encode([
+        'from' => $remitente,
+        'to' => [(string)$destino],
+        'subject' => (string)$asunto,
+        'html' => (string)$html,
+    ], JSON_UNESCAPED_UNICODE);
+    $ch = curl_init('https://api.resend.com/emails');
+    curl_setopt_array($ch, [
+        CURLOPT_POST => true,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $apiKey, 'Content-Type: application/json'],
+        CURLOPT_POSTFIELDS => $payload,
+        CURLOPT_TIMEOUT => 12,
+    ]);
+    $respuesta = curl_exec($ch);
+    $estado = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $error = curl_error($ch);
+    curl_close($ch);
+    if ($respuesta === false || $estado < 200 || $estado >= 300) {
+        error_log('Alyra: no se pudo enviar correo transaccional (HTTP ' . $estado . '). ' . $error);
+        return false;
+    }
+    return true;
+}
+
+function url_publica_alyra()
+{
+    $base = rtrim(getenv('ALYRA_PUBLIC_URL') ?: 'https://alyra-recicla.vercel.app', '/');
+    return $base;
+}
+
 /** Valida que el color de acento sea uno de los seis ramos del herbario. */
 function acento_valido($color)
 {
@@ -410,3 +447,4 @@ function usuario_json($u)
         'creado'  => $u['creado_en'] ?? '',
     ];
 }
+
