@@ -324,6 +324,22 @@
           <button class="btn btn-solid btn-small" onclick="saveProfileSettings()">Guardar cambios</button>
         </div>
 
+        <div class="side-card profile-photo-settings">
+          <h3>Foto de perfil</h3>
+          <p class="hint">Elige una imagen para que las demás personas te reconozcan en Alyra.</p>
+          <div class="profile-photo-editor">
+            <div id="profile-photo-preview" class="profile-photo-preview" aria-label="Vista previa de tu foto"></div>
+            <div class="profile-photo-controls">
+              <label class="btn btn-ghost btn-small" for="profile-photo-input">Cambiar foto</label>
+              <button class="btn btn-ghost btn-small" id="remove-profile-photo" type="button" onclick="removeProfilePhoto()">Quitar foto</button>
+              <input id="profile-photo-input" class="hidden" type="file" accept="image/jpeg,image/png,image/webp,image/gif" onchange="handleAvatarSelect(event)">
+              <p class="profile-photo-hint">JPG, PNG, WEBP o GIF · máximo 5 MB</p>
+            </div>
+          </div>
+          <p id="profile-photo-note" class="profile-photo-note" role="status"></p>
+          <button class="btn btn-solid btn-small" id="save-profile-photo" type="button" onclick="saveProfilePhoto()">Guardar foto</button>
+        </div>
+
         <div class="side-card">
           <h3>Apariencia de tu blog</h3>
           <p class="hint" style="display:block;margin-bottom:12px;">Elige el color que identifica tu portada y avatar.
@@ -468,6 +484,9 @@ conectada a MySQL. Sin ese backend, Alyra muestra un error y no guarda localment
     var currentView = "feed";
     var currentRoute = "home";
     var currentProfileTab = "posts";
+    var avatarPendiente = null;
+    var avatarPreviewUrl = null;
+    var quitarAvatarPendiente = false;
     /* ============================================================
     CONECTAR CON BASE DE DATOS: contador de miembros en tiempo real
     ------------------------------------------------------------
@@ -495,6 +514,12 @@ conectada a MySQL. Sin ese backend, Alyra muestra un error y no guarda localment
       var primera = partes[0] ? partes[0][0] : "?";
       var segunda = partes[1] ? partes[1][0] : "";
       return (primera + segunda).toUpperCase();
+    }
+    function avatarContent(user) {
+      var photo = srcSeguro(user && user.avatar);
+      return photo
+        ? '<img class="avatar-photo" src="' + esc(photo) + '" alt="" loading="lazy">'
+        : esc(initials(user && user.name));
     }
     function colorFor(seedOrUser) {
       if (typeof seedOrUser === "object" && seedOrUser.accent) {
@@ -894,7 +919,7 @@ conectada a MySQL. Sin ese backend, Alyra muestra un error y no guarda localment
     function renderTopbarAvatar() {
       var el = document.getElementById("topbar-avatar");
       el.style.background = colorFor(currentUser);
-      el.textContent = initials(currentUser.name);
+      el.innerHTML = avatarContent(currentUser);
     }
     function renderProfileCard() {
       if (!currentUser) {
@@ -909,7 +934,7 @@ conectada a MySQL. Sin ese backend, Alyra muestra un error y no guarda localment
       var myPosts = mios.length;
       var myImpact = mios.reduce(function (a, p) { return a + p.impact; }, 0);
       el.innerHTML =
-        '<div class="avatar" style="background:' + colorFor(currentUser) + '">' + initials(currentUser.name) + '</div>' +
+        '<div class="avatar" style="background:' + colorFor(currentUser) + '">' + avatarContent(currentUser) + '</div>' +
         '<div class="uname">' + esc(currentUser.name) + '</div>' +
         '<div class="uhandle">' + esc(currentUser.handle) + '</div>' +
         '<button class="btn btn-ghost btn-small" onclick="openCompose()">Compartir reciclaje</button>' +
@@ -991,7 +1016,7 @@ conectada a MySQL. Sin ese backend, Alyra muestra un error y no guarda localment
       }).join("");
       return '<div class="post-card" style="border-left-color:var(--' + cat + '-500);">' +
         '<div class="post-head">' +
-        '<div class="avatar" style="width:38px;height:38px;font-size:13px;background:' + colorFor(p.accent ? { accent: p.accent } : p.author) + '">' + initials(p.author) + '</div>' +
+        '<div class="avatar" style="width:38px;height:38px;font-size:13px;background:' + colorFor(p.accent ? { accent: p.accent } : p.author) + '">' + avatarContent({ name: p.author, avatar: p.authorAvatar }) + '</div>' +
         '<div class="who"><div class="name">' + esc(p.author) + '</div><div class="meta">' + esc(p.handle) + ' · ' + esc(p.time) + '</div></div>' +
         '</div>' +
         mediaBlock +
@@ -1294,7 +1319,7 @@ conectada a MySQL. Sin ese backend, Alyra muestra un error y no guarda localment
       cover.innerHTML =
         '<div class="cover-dot" style="width:60px;height:60px;background:var(--' + currentUser.accent + '-300);top:-10px;right:60px;"></div>' +
         '<div class="cover-dot" style="width:34px;height:34px;background:var(--' + currentUser.accent + '-700);bottom:20px;right:140px;"></div>' +
-        '<div class="profile-cover-avatar" style="background:var(--' + currentUser.accent + '-700);">' + initials(currentUser.name) + '</div>';
+        '<div class="profile-cover-avatar" style="background:var(--' + currentUser.accent + '-700);">' + avatarContent(currentUser) + '</div>';
       document.getElementById("profile-name-big").textContent = currentUser.name;
       document.getElementById("profile-handle-big").textContent = currentUser.handle + (currentUser.isPrivate ? " · perfil privado" : "");
       document.getElementById("profile-bio-big").textContent = currentUser.bio || "Todavía no ha escrito una biografía.";
@@ -1333,11 +1358,77 @@ conectada a MySQL. Sin ese backend, Alyra muestra un error y no guarda localment
       document.getElementById("set-bio").value = currentUser.bio || "";
       document.getElementById("set-email").value = currentUser.email;
       document.getElementById("set-private").checked = !!currentUser.isPrivate;
+      var preview = document.getElementById("profile-photo-preview");
+      if (preview) { preview.style.background = colorFor(currentUser); preview.innerHTML = avatarContent(currentUser); }
+      var input = document.getElementById("profile-photo-input");
+      var save = document.getElementById("save-profile-photo");
+      var note = document.getElementById("profile-photo-note");
+      var remove = document.getElementById("remove-profile-photo");
+      if (input) input.disabled = !MODO_API;
+      if (save) save.disabled = !MODO_API;
+      if (note) note.textContent = MODO_API
+        ? "Tu foto se guardará en tu cuenta y aparecerá junto a tus publicaciones."
+        : "El servidor de perfiles no está conectado en esta versión; sin él no se puede guardar una foto de forma segura.";
+      if (remove) remove.classList.toggle("hidden", !currentUser.avatar);
       var wrap = document.getElementById("accent-swatches");
       wrap.innerHTML = RAMPS.map(function (r) {
         var sel = currentUser.accent === r ? "sel" : "";
-        return '<div class="swatch ' + sel + '" style="background:var(--' + r + '-500);" onclick="setAccent(\'' + r + '\')" title="' + r + '"></div>';
+        return '<div class="swatch ' + sel + '" style="background:var(--' + r + '-500);" onclick="setAccent(\\'' + r + '\\')" title="' + r + '"></div>';
       }).join("");
+    }
+    function handleAvatarSelect(event) {
+      var input = event.target, file = input.files && input.files[0];
+      if (!file) return;
+      if (!MODO_API) { showToast("No se puede guardar la foto sin el servidor de perfiles."); input.value = ""; return; }
+      if (["image/jpeg", "image/png", "image/webp", "image/gif"].indexOf(file.type) === -1) {
+        showToast("Elige una imagen JPG, PNG, WEBP o GIF."); input.value = ""; return;
+      }
+      if (file.size > 5 * 1024 * 1024) { showToast("La foto de perfil no puede pesar más de 5 MB."); input.value = ""; return; }
+      if (avatarPreviewUrl && avatarPreviewUrl.indexOf("blob:") === 0) URL.revokeObjectURL(avatarPreviewUrl);
+      avatarPendiente = file; quitarAvatarPendiente = false;
+      avatarPreviewUrl = URL.createObjectURL(file);
+      document.getElementById("profile-photo-preview").innerHTML =
+        '<img class="avatar-photo" src="' + esc(avatarPreviewUrl) + '" alt="Vista previa de la foto elegida">';
+      document.getElementById("save-profile-photo").textContent = "Guardar foto";
+    }
+    function removeProfilePhoto() {
+      if (!MODO_API) { showToast("No se puede guardar el cambio sin el servidor de perfiles."); return; }
+      quitarAvatarPendiente = true; avatarPendiente = null;
+      if (avatarPreviewUrl && avatarPreviewUrl.indexOf("blob:") === 0) URL.revokeObjectURL(avatarPreviewUrl);
+      avatarPreviewUrl = null;
+      var preview = document.getElementById("profile-photo-preview");
+      preview.innerHTML = esc(initials(currentUser.name)); preview.style.background = colorFor(currentUser);
+      document.getElementById("profile-photo-input").value = "";
+      document.getElementById("save-profile-photo").textContent = "Guardar cambios";
+    }
+    function saveProfilePhoto() {
+      if (!currentUser) return;
+      if (!MODO_API) { showToast("La foto no se guardó: esta página necesita el servidor Alyra conectado a PHP y MySQL."); return; }
+      if (!avatarPendiente && !quitarAvatarPendiente) { showToast("Elige una foto primero."); return; }
+      var button = document.getElementById("save-profile-photo");
+      button.disabled = true; button.textContent = "Guardando…";
+      var upload = Promise.resolve({ url: "" });
+      if (avatarPendiente) {
+        var form = new FormData();
+        form.append("archivo", avatarPendiente); form.append("tipo", "avatar");
+        upload = apiFetch("api/subir_media.php", { method: "POST", body: form });
+      }
+      upload.then(function (result) { return apiPost("api/perfil.php", { foto_perfil: result.url || "" }); })
+        .then(function (result) {
+          currentUser = result.usuario; avatarPendiente = null; quitarAvatarPendiente = false;
+          if (avatarPreviewUrl && avatarPreviewUrl.indexOf("blob:") === 0) URL.revokeObjectURL(avatarPreviewUrl);
+          avatarPreviewUrl = null; document.getElementById("profile-photo-input").value = "";
+          renderTopbarAvatar(); renderProfileCard(); renderSettingsView();
+          if (currentRoute === "profile") renderProfileView();
+          posts.forEach(function (post) {
+            if (Number(post.authorId) === Number(currentUser.id)) post.authorAvatar = currentUser.avatar || "";
+          });
+          renderFeed(); renderGrid(); renderBlogPreview();
+          showToast("Tu foto de perfil quedó guardada.");
+        }).catch(function (error) {
+          button.disabled = false; button.textContent = "Guardar foto";
+          showToast(error.message || "No se pudo guardar la foto. Inténtalo de nuevo.");
+        });
     }
     function setAccent(r) {
       currentUser.accent = r;
