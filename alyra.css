@@ -3100,3 +3100,27 @@ body { letter-spacing: -.008em; }
   .community-feed-label { font-size:12px; }
   .community-empty { border-radius:19px; }
 }
+
+/* Avatar de cuenta: recorte circular limpio sin cortar el retrato en la portada. */
+.profile-cover { overflow: visible; }
+.profile-cover-avatar { z-index: 2; overflow: hidden; }
+.profile-cover-avatar .avatar-photo { object-fit: cover; }
+.avatar-photo { display:block; width:100%; height:100%; border-radius:inherit; object-fit:cover; object-position:center; }
+.profile-photo-settings .hint { margin-bottom:16px; }
+.profile-photo-editor { display:flex; align-items:center; gap:16px; margin:4px 0 12px; }
+.profile-photo-preview {
+  display:flex; flex:0 0 78px; width:78px; height:78px; align-items:center; justify-content:center;
+  overflow:hidden; border:3px solid var(--papel); border-radius:50%; color:var(--papel);
+  font-family:var(--f-display); font-size:25px; font-weight:600; box-shadow:var(--sombra-md);
+}
+.profile-photo-preview .avatar-photo { width:100%; height:100%; object-fit:cover; }
+.profile-photo-controls { display:flex; flex-wrap:wrap; align-items:center; gap:8px; min-width:0; }
+.profile-photo-controls label { margin:0; }
+.profile-photo-controls label.is-disabled { opacity:.55; cursor:not-allowed; }
+.profile-photo-hint { flex-basis:100%; margin:2px 0 0; color:var(--tinta-tenue); font-size:12px; }
+.profile-photo-note { margin:8px 0 12px; color:var(--tinta-soft); font-size:12.5px; line-height:1.55; }
+#save-profile-photo:disabled { opacity:.58; cursor:not-allowed; }
+@media (max-width:430px) {
+  .profile-photo-editor { align-items:flex-start; }
+  .profile-photo-preview { flex-basis:66px; width:66px; height:66px; }
+}
