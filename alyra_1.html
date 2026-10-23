@@ -1116,7 +1116,7 @@ conectada a MySQL. Sin ese backend, Alyra muestra un error y no guarda localment
         '<div class="post-tags">' + tagsHTML + '</div>' +
         '<div class="post-actions">' +
         '<button class="impact-btn" onclick="toggleImpact(' + p.id + ')">' + ringsBadgeSVG(p.impact, p.reacted) + '<span class="impact-count">' + p.impact + '</span></button>' +
-        '<button class="action-mini" type="button" onclick="toggleComentarios(' + p.id + ', this)" aria-expanded="false">💬 <span class="comments-count">' + p.comments + '</span></button>' +
+        '<button class="action-mini comments-toggle" type="button" onclick="toggleComentarios(' + p.id + ', this)" aria-expanded="false">💬 <span class="comments-count">' + p.comments + '</span></button>' +
         '<button class="action-mini ' + (p.rebloggedByMe ? 'on' : '') + '" onclick="toggleReblog(' + p.id + ')">♻️ ' + p.reblogs + '</button>' +
         (currentUser && Number(currentUser.id) === Number(p.authorId) ? '<button class="action-mini delete-action" type="button" onclick="borrarPublicacion(' + p.id + ')" aria-label="Borrar publicación">Borrar</button>' : '') +
         '</div>' +
@@ -1177,6 +1177,20 @@ conectada a MySQL. Sin ese backend, Alyra muestra un error y no guarda localment
           showToast("Comentario borrado");
         }).catch(function (e) { showToast(e.message || "No se pudo borrar el comentario."); });
     }
+    function mostrarComentariosExistentes(contenedor, lista) {
+      if (!contenedor || !lista || !lista.length) return;
+      lista.forEach(function (publicacion) {
+        if (Number(publicacion.comments || 0) < 1) return;
+        var id = Number(publicacion.id) || 0;
+        if (!id) return;
+        var panel = contenedor.querySelector('.comments-panel[data-post-id="' + id + '"]');
+        var tarjeta = panel && panel.closest(".post-card");
+        var boton = tarjeta && tarjeta.querySelector(".comments-toggle");
+        if (panel && boton && panel.classList.contains("hidden")) {
+          toggleComentarios(id, boton);
+        }
+      });
+    }
     function toggleComentarios(id, boton) {
       var tarjeta = boton && boton.closest ? boton.closest(".post-card") : null;
       var panel = tarjeta && tarjeta.querySelector(".comments-panel");
@@ -1200,10 +1214,15 @@ conectada a MySQL. Sin ese backend, Alyra muestra un error y no guarda localment
       apiFetch("api/comentarios.php?publicacion=" + encodeURIComponent(id))
         .then(function (d) {
           comentariosCache[id] = d.comentarios || [];
-          renderComentarios(panel, comentariosCache[id]);
+          document.querySelectorAll('.comments-panel[data-post-id="' + id + '"]').forEach(function (panelVisible) {
+            renderComentarios(panelVisible, comentariosCache[id]);
+          });
         })
         .catch(function (e) {
-          lista.innerHTML = '<p class="comments-error">' + esc(e.message || "No se pudieron cargar los comentarios.") + '</p>';
+          document.querySelectorAll('.comments-panel[data-post-id="' + id + '"]').forEach(function (panelVisible) {
+            var listaVisible = panelVisible.querySelector(".comments-list");
+            if (listaVisible) listaVisible.innerHTML = '<p class="comments-error">' + esc(e.message || "No se pudieron cargar los comentarios.") + '</p>';
+          });
         })
         .then(function () { comentariosCargando[id] = false; });
     }
@@ -1264,8 +1283,10 @@ conectada a MySQL. Sin ese backend, Alyra muestra un error y no guarda localment
           '<button class="btn btn-solid btn-small" type="button" onclick="openCompose()">Crear la primera publicación</button></div>';
         return;
       }
-      el.innerHTML = posts.slice(0, 4).map(postCardHTML).join("") +
+      var recientes = posts.slice(0, 4);
+      el.innerHTML = recientes.map(postCardHTML).join("") +
         '<div class="community-feed-more"><button class="btn btn-ghost" type="button" onclick="navigateTo(\'community\')">Explorar toda la comunidad <span aria-hidden="true">→</span></button></div>';
+      mostrarComentariosExistentes(el, recientes);
     }
     function renderFeed() {
       var el = document.getElementById("feed-view");
@@ -1282,6 +1303,7 @@ conectada a MySQL. Sin ese backend, Alyra muestra un error y no guarda localment
         return;
       }
       el.innerHTML = lista.map(postCardHTML).join("");
+      mostrarComentariosExistentes(el, lista);
     }
     function gridTileHTML(p) {
       var cat = rampFor(p.tags[0] || "musgo");
