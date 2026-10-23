@@ -18,7 +18,7 @@ try {
     $excluir = $yo ? (int)$yo['id'] : 0;
 
     $stmt = $pdo->prepare(
-        "SELECT u.nombre, u.bio, u.color_acento, u.foto_perfil,
+        "SELECT u.id, u.nombre, u.bio, u.color_acento, (u.foto_perfil IS NOT NULL AND u.foto_perfil <> '') AS tiene_avatar,
                 (SELECT COUNT(*) FROM publicaciones p WHERE p.usuario_id = u.id) AS publicaciones
            FROM usuarios u
           WHERE u.id <> ? AND u.es_privado = 0
@@ -34,7 +34,7 @@ try {
                         ? (int)$fila['publicaciones'] . ' publicaciones'
                         : 'Recién se unió a Alyra'),
             'accent' => acento_valido($fila['color_acento']),
-            'avatar' => (string)($fila['foto_perfil'] ?? ''),
+            'avatar' => !empty($fila['tiene_avatar']) ? 'api/avatar.php?id=' . (int)$fila['id'] : '',
         ];
     }
 } catch (PDOException $e) {
