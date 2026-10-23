@@ -41,7 +41,13 @@ if (!preg_match('/^@[a-z0-9_.-]{2,39}$/i', $handle)) {
 if (mb_strlen($bio) > 500) {
     responder(['ok' => false, 'error' => 'La biografía no puede pasar de 500 caracteres.'], 400);
 }
-if (mb_strlen($avatar) > 300 || ($avatar !== '' && !preg_match('~^uploads/[a-f0-9]{20}\\.(jpg|png|webp|gif)$~i', $avatar))) {
+if ($avatar !== '' && strlen($avatar) > 350000) {
+    responder(['ok' => false, 'error' => 'La foto procesada supera el límite permitido. Elige otra imagen.'], 400);
+}
+$avatarValido = $avatar === ''
+    || preg_match('~^uploads/[a-f0-9]{20}\\.(jpg|png|webp|gif)$~i', $avatar)
+    || preg_match('~^data:image/jpeg;base64,[A-Za-z0-9+/]+={0,2}$~', $avatar);
+if (!$avatarValido) {
     responder(['ok' => false, 'error' => 'La foto de perfil no es válida.'], 400);
 }
 
