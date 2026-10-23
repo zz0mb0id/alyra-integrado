@@ -28,6 +28,7 @@ $handle   = isset($datos['usuario'])  ? trim($datos['usuario'])  : (isset($datos
 $bio      = isset($datos['bio'])      ? trim($datos['bio'])      : $yo['bio'];
 $acento   = isset($datos['color_acento']) ? $datos['color_acento'] : (isset($datos['accent']) ? $datos['accent'] : $yo['color_acento']);
 $privado  = isset($datos['es_privado']) ? $datos['es_privado'] : (isset($datos['isPrivate']) ? ($datos['isPrivate'] ? 1 : 0) : (int)$yo['es_privado']);
+$avatar   = isset($datos['foto_perfil']) ? trim((string)$datos['foto_perfil']) : (string)($yo['foto_perfil'] ?? '');
 
 // ---- Validaciones ----
 if (mb_strlen($nombre) < 3 || mb_strlen($nombre) > 60) {
@@ -39,6 +40,9 @@ if (!preg_match('/^@[a-z0-9_.-]{2,39}$/i', $handle)) {
 }
 if (mb_strlen($bio) > 500) {
     responder(['ok' => false, 'error' => 'La biografía no puede pasar de 500 caracteres.'], 400);
+}
+if (mb_strlen($avatar) > 300 || ($avatar !== '' && !preg_match('~^uploads/[a-f0-9]{20}\\.(jpg|png|webp|gif)$~i', $avatar))) {
+    responder(['ok' => false, 'error' => 'La foto de perfil no es válida.'], 400);
 }
 
 // ¿Otra persona ya usa ese @usuario?
@@ -52,9 +56,9 @@ $acento = acento_valido($acento);
 $privado = $privado ? 1 : 0;
 
 $stmt = $pdo->prepare(
-    'UPDATE usuarios SET nombre = ?, usuario = ?, bio = ?, color_acento = ?, es_privado = ? WHERE id = ?'
+    'UPDATE usuarios SET nombre = ?, usuario = ?, bio = ?, color_acento = ?, es_privado = ?, foto_perfil = ? WHERE id = ?'
 );
-$stmt->execute([$nombre, $handle, $bio === '' ? null : $bio, $acento, $privado, $yo['id']]);
+$stmt->execute([$nombre, $handle, $bio === '' ? null : $bio, $acento, $privado, $avatar === '' ? null : $avatar, $yo['id']]);
 
 $stmt = $pdo->prepare('SELECT * FROM usuarios WHERE id = ?');
 $stmt->execute([$yo['id']]);
