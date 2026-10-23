@@ -20,12 +20,13 @@ if (!is_string($data) || !preg_match('~^data:image/jpeg;base64,([A-Za-z0-9+/]+={
     exit;
 }
 $bytes = base64_decode($m[1], true);
-if ($bytes === false || strlen($bytes) > 260000 || @getimagesizefromstring($bytes) === false) {
+$imagen = $bytes === false ? false : @getimagesizefromstring($bytes);
+if ($bytes === false || strlen($bytes) > 260000 || $imagen === false || $imagen[2] !== IMAGETYPE_JPEG) {
     http_response_code(404);
     exit;
 }
 header('Content-Type: image/jpeg');
 header('Content-Length: ' . strlen($bytes));
-header('Cache-Control: public, max-age=300, stale-while-revalidate=86400');
+header('Cache-Control: no-store, max-age=0');
 header('X-Content-Type-Options: nosniff');
 echo $bytes;
