@@ -1375,7 +1375,7 @@ conectada a MySQL. Sin ese backend, Alyra muestra un error y no guarda localment
       var wrap = document.getElementById("accent-swatches");
       wrap.innerHTML = RAMPS.map(function (r) {
         var sel = currentUser.accent === r ? "sel" : "";
-        return '<div class="swatch ' + sel + '" style="background:var(--' + r + '-500);" onclick="setAccent(\\'' + r + '\\')" title="' + r + '"></div>';
+        return '<div class="swatch ' + sel + '" style="background:var(--' + r + '-500);" onclick="setAccent(\'' + r + '\')" title="' + r + '"></div>';
       }).join("");
     }
     function handleAvatarSelect(event) {
