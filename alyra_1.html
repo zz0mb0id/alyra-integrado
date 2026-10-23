@@ -187,10 +187,20 @@
         <span class="linea-fina"></span>
       </div>
 
-      <div class="blog-latest reveal">
-        <h2>Últimas publicaciones</h2>
-        <div id="blog-latest-list"></div>
-      </div>
+      <section class="blog-latest community-preview reveal" aria-labelledby="community-preview-title">
+        <div class="community-preview-heading">
+          <div class="community-preview-copy">
+            <p class="community-kicker"><span class="community-live-dot" aria-hidden="true"></span> La comunidad Alyra</p>
+            <h2 id="community-preview-title">Historias que inspiran nuevas acciones</h2>
+            <p>Comparte tus ideas, descubre iniciativas y conversa con personas que también cuidan nuestro planeta.</p>
+          </div>
+          <button class="btn btn-solid community-compose" type="button" onclick="openCompose()">
+            <span aria-hidden="true">＋</span> Agregar publicación
+          </button>
+        </div>
+        <div class="community-feed-label"><span>Lo más reciente</span><span>Ideas que dejan huella</span></div>
+        <div id="blog-latest-list" class="community-preview-list" aria-live="polite"></div>
+      </section>
     </div>
 
     <!-- ---- COMUNIDAD (la red social, ahora una sección) ---- -->
@@ -1131,11 +1141,14 @@ conectada a MySQL. Sin ese backend, Alyra muestra un error y no guarda localment
         return;
       }
       if (posts.length === 0) {
-        el.innerHTML = '<div class="empty-note">Aún no hay publicaciones en la comunidad. Sé la primera persona en compartir tu reciclaje.</div>';
+        el.innerHTML = '<div class="community-empty"><span class="community-empty-icon" aria-hidden="true">🌱</span>' +
+          '<strong>La primera historia puede ser la tuya.</strong>' +
+          '<p>Cuéntanos qué reutilizaste, cómo reciclaste o qué pequeño cambio te inspira.</p>' +
+          '<button class="btn btn-solid btn-small" type="button" onclick="openCompose()">Crear la primera publicación</button></div>';
         return;
       }
-      el.innerHTML = posts.slice(0, 3).map(postCardHTML).join("") +
-        '<div style="text-align:center;margin:6px 0 10px;"><button class="btn btn-ghost btn-small" onclick="navigateTo(\'community\')">Ver toda la comunidad →</button></div>';
+      el.innerHTML = posts.slice(0, 4).map(postCardHTML).join("") +
+        '<div class="community-feed-more"><button class="btn btn-ghost" type="button" onclick="navigateTo(\'community\')">Explorar toda la comunidad <span aria-hidden="true">→</span></button></div>';
     }
     function renderFeed() {
       var el = document.getElementById("feed-view");
