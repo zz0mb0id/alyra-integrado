@@ -952,7 +952,7 @@ conectada a MySQL. Sin ese backend, Alyra muestra un error y no guarda localment
       }
       el.innerHTML = suggested.map(function (s) {
         return '<div class="suggest-row">' +
-          '<div class="avatar" style="background:' + colorFor(s.accent ? { accent: s.accent } : s.name) + '">' + initials(s.name) + '</div>' +
+          '<div class="avatar" style="background:' + colorFor(s.accent ? { accent: s.accent } : s.name) + '">' + avatarContent(s) + '</div>' +
           '<div class="info"><div class="n">' + esc(s.name) + '</div><div class="d">' + esc(s.desc) + '</div></div>' +
           '<button class="btn btn-ghost btn-small" data-seguir="' + esc(s.name) + '" onclick="followUser(this.dataset.seguir)">Seguir</button>' +
           '</div>';
@@ -1366,6 +1366,8 @@ conectada a MySQL. Sin ese backend, Alyra muestra un error y no guarda localment
       var remove = document.getElementById("remove-profile-photo");
       if (input) input.disabled = !MODO_API;
       if (save) save.disabled = !MODO_API;
+      var chooseLabel = document.querySelector('label[for="profile-photo-input"]');
+      if (chooseLabel) chooseLabel.classList.toggle("is-disabled", !MODO_API);
       if (note) note.textContent = MODO_API
         ? "Tu foto se guardará en tu cuenta y aparecerá junto a tus publicaciones."
         : "El servidor de perfiles no está conectado en esta versión; sin él no se puede guardar una foto de forma segura.";
