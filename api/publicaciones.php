@@ -19,7 +19,7 @@ require_once __DIR__ . '/../config.php';
 function cargar_publicaciones(PDO $pdo, $yoId, $limite = 100, $publicacionId = null, $autorId = null)
 {
     $yoId = (int)$yoId;
-    $sql = 'SELECT p.id, p.usuario_id, p.texto, p.tipo_media, p.valor_media,
+    $sql = "SELECT p.id, p.usuario_id, p.texto, p.tipo_media, p.valor_media,
                    p.impacto, p.comentarios, p.reblogs, p.creado_en,
                    u.nombre AS autor, u.usuario AS handle, u.color_acento, (u.foto_perfil IS NOT NULL AND u.foto_perfil <> '') AS tiene_avatar,
                    EXISTS(SELECT 1 FROM impactos i
@@ -28,7 +28,7 @@ function cargar_publicaciones(PDO $pdo, $yoId, $limite = 100, $publicacionId = n
                            WHERE rb.publicacion_id = p.id AND rb.usuario_id = ?) AS reblogueo
               FROM publicaciones p
               INNER JOIN usuarios u ON u.id = p.usuario_id
-             ';
+             ";
 
     // Las publicaciones son públicas para cualquier visitante del feed.
     // es_privado controla la visibilidad del perfil, no la de sus publicaciones.
