@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   bio            TEXT NULL,
   color_acento   VARCHAR(10)  NOT NULL DEFAULT 'musgo',
   es_privado     TINYINT(1)   NOT NULL DEFAULT 0,
-  foto_perfil    VARCHAR(300) NULL,
+  foto_perfil    MEDIUMTEXT NULL,
   creado_en      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
