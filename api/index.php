@@ -18,6 +18,7 @@ $rutas = [
     'api/logout.php' => __DIR__ . '/logout.php',
     'api/password.php' => __DIR__ . '/password.php',
     'api/perfil.php' => __DIR__ . '/perfil.php',
+    'api/avatar.php' => __DIR__ . '/avatar.php',
     'api/publicaciones.php' => __DIR__ . '/publicaciones.php',
     'api/reblog.php' => __DIR__ . '/reblog.php',
     'api/registro.php' => __DIR__ . '/registro.php',
