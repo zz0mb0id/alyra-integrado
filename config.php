@@ -442,6 +442,7 @@ function usuario_json($u)
         'handle'  => $u['usuario'],
         'email'   => $u['correo'],
         'bio'     => (string)($u['bio'] ?? ''),
+        'avatar'  => (string)($u['foto_perfil'] ?? ''),
         'accent'  => acento_valido($u['color_acento']),
         'isPrivate' => !empty($u['es_privado']),
         'creado'  => $u['creado_en'] ?? '',
