@@ -980,7 +980,7 @@ conectada a MySQL. Sin ese backend, Alyra muestra un error y no guarda localment
        servidor a uploads/, o un blob/data generado en este mismo navegador. */
     function srcSeguro(u) {
       u = String(u || "");
-      if (u.indexOf("uploads/") === 0 || u.indexOf("blob:") === 0 || u.indexOf("data:") === 0) return u;
+      if (u.indexOf("uploads/") === 0 || u.indexOf("api/avatar.php?id=") === 0 || u.indexOf("blob:") === 0 || u.indexOf("data:") === 0) return u;
       return "";
     }
     function mediaBlockFor(p) {
@@ -1385,7 +1385,7 @@ conectada a MySQL. Sin ese backend, Alyra muestra un error y no guarda localment
       if (["image/jpeg", "image/png", "image/webp", "image/gif"].indexOf(file.type) === -1) {
         showToast("Elige una imagen JPG, PNG, WEBP o GIF."); input.value = ""; return;
       }
-      if (file.size > 5 * 1024 * 1024) { showToast("La foto de perfil no puede pesar más de 5 MB."); input.value = ""; return; }
+      if (file.size > 10 * 1024 * 1024) { showToast("La foto original no puede pesar más de 10 MB."); input.value = ""; return; }
       if (avatarPreviewUrl && avatarPreviewUrl.indexOf("blob:") === 0) URL.revokeObjectURL(avatarPreviewUrl);
       avatarPendiente = file; quitarAvatarPendiente = false;
       avatarPreviewUrl = URL.createObjectURL(file);
@@ -1405,32 +1405,58 @@ conectada a MySQL. Sin ese backend, Alyra muestra un error y no guarda localment
     }
     function saveProfilePhoto() {
       if (!currentUser) return;
-      if (!MODO_API) { showToast("La foto no se guardó: esta página necesita el servidor Alyra conectado a PHP y MySQL."); return; }
+      if (!MODO_API) { showToast("La foto se guarda cuando el servidor Alyra está conectado."); return; }
       if (!avatarPendiente && !quitarAvatarPendiente) { showToast("Elige una foto primero."); return; }
       var button = document.getElementById("save-profile-photo");
       button.disabled = true; button.textContent = "Guardando…";
-      var upload = Promise.resolve({ url: "" });
-      if (avatarPendiente) {
-        var form = new FormData();
-        form.append("archivo", avatarPendiente); form.append("tipo", "avatar");
-        upload = apiFetch("api/subir_media.php", { method: "POST", body: form });
-      }
-      upload.then(function (result) { return apiPost("api/perfil.php", { foto_perfil: result.url || "" }); })
-        .then(function (result) {
-          currentUser = result.usuario; avatarPendiente = null; quitarAvatarPendiente = false;
-          if (avatarPreviewUrl && avatarPreviewUrl.indexOf("blob:") === 0) URL.revokeObjectURL(avatarPreviewUrl);
-          avatarPreviewUrl = null; document.getElementById("profile-photo-input").value = "";
-          renderTopbarAvatar(); renderProfileCard(); renderSettingsView();
-          if (currentRoute === "profile") renderProfileView();
-          posts.forEach(function (post) {
-            if (Number(post.authorId) === Number(currentUser.id)) post.authorAvatar = currentUser.avatar || "";
-          });
-          renderFeed(); renderGrid(); renderBlogPreview();
-          showToast("Tu foto de perfil quedó guardada.");
-        }).catch(function (error) {
-          button.disabled = false; button.textContent = "Guardar foto";
-          showToast(error.message || "No se pudo guardar la foto. Inténtalo de nuevo.");
+      var fotoLista = quitarAvatarPendiente ? Promise.resolve("") : comprimirAvatar(avatarPendiente);
+      fotoLista.then(function (foto) {
+        return apiPost("api/perfil.php", { foto_perfil: foto });
+      }).then(function (result) {
+        currentUser = result.usuario; avatarPendiente = null; quitarAvatarPendiente = false;
+        if (avatarPreviewUrl && avatarPreviewUrl.indexOf("blob:") === 0) URL.revokeObjectURL(avatarPreviewUrl);
+        avatarPreviewUrl = null; document.getElementById("profile-photo-input").value = "";
+        renderTopbarAvatar(); renderProfileCard(); renderSettingsView();
+        if (currentRoute === "profile") renderProfileView();
+        posts.forEach(function (post) {
+          if (Number(post.authorId) === Number(currentUser.id)) post.authorAvatar = currentUser.avatar || "";
         });
+        renderFeed(); renderGrid(); renderBlogPreview();
+        showToast("Tu foto quedó guardada en tu cuenta.");
+      }).catch(function (error) {
+        button.disabled = false; button.textContent = "Guardar foto";
+        showToast(error.message || "No se pudo guardar la foto. Inténtalo de nuevo.");
+      });
+    }
+    function comprimirAvatar(file) {
+      return new Promise(function (resolve, reject) {
+        var lector = new FileReader();
+        lector.onerror = reject;
+        lector.onload = function () {
+          var imagen = new Image();
+          imagen.onerror = reject;
+          imagen.onload = function () {
+            var escala = Math.min(1, 384 / Math.max(imagen.naturalWidth, imagen.naturalHeight));
+            var canvas = document.createElement("canvas");
+            canvas.width = Math.max(1, Math.round(imagen.naturalWidth * escala));
+            canvas.height = Math.max(1, Math.round(imagen.naturalHeight * escala));
+            canvas.getContext("2d").drawImage(imagen, 0, 0, canvas.width, canvas.height);
+            canvas.toBlob(function (blob) {
+              if (!blob) { reject(new Error("No se pudo procesar la imagen.")); return; }
+              var quality = blob.size > 240000 ? 0.62 : 0.78;
+              canvas.toBlob(function (compacta) {
+                if (!compacta || compacta.size > 260000) { reject(new Error("La foto ocupa demasiado. Prueba con otra imagen.")); return; }
+                var salida = new FileReader();
+                salida.onerror = reject;
+                salida.onload = function () { resolve(String(salida.result)); };
+                salida.readAsDataURL(compacta);
+              }, "image/jpeg", quality);
+            }, "image/jpeg", 0.78);
+          };
+          imagen.src = lector.result;
+        };
+        lector.readAsDataURL(file);
+      });
     }
     function setAccent(r) {
       currentUser.accent = r;
