@@ -21,6 +21,7 @@ require_once __DIR__ . '/../config.php';
 exigir_metodo('POST');
 mismo_origen();
 $yo = exigir_sesion($pdo);
+$esAvatar = isset($_POST['tipo']) && $_POST['tipo'] === 'avatar';
 
 if (!isset($_FILES['archivo'])) {
     responder(['ok' => false, 'error' => 'No llegó ningún archivo.'], 400);
@@ -33,8 +34,9 @@ if ((int)$archivo['error'] !== UPLOAD_ERR_OK) {
         : 'No se pudo recibir el archivo (error ' . $codigo . ').';
     responder(['ok' => false, 'error' => $motivo], 400);
 }
-if ((int)$archivo['size'] > 25 * 1024 * 1024) {
-    responder(['ok' => false, 'error' => 'El archivo pesa más de 25 MB. Comprime la imagen o recorta el video.'], 400);
+$limiteBytes = ($esAvatar ? 5 : 25) * 1024 * 1024;
+if ((int)$archivo['size'] > $limiteBytes) {
+    responder(['ok' => false, 'error' => $esAvatar ? 'La foto de perfil no puede pesar más de 5 MB.' : 'El archivo pesa más de 25 MB. Comprime la imagen o recorta el video.'], 400);
 }
 
 // ---- ¿Qué es, de verdad? ---- */
@@ -50,8 +52,8 @@ $mapa = [
     'video/webm'     => ['webm', 'video'],
     'video/quicktime' => ['mov',  'video'],
 ];
-if (!isset($mapa[$mime])) {
-    responder(['ok' => false, 'error' => 'Solo se aceptan fotos (JPG, PNG, WEBP, GIF) y videos (MP4, WEBM, MOV).'], 400);
+if (!isset($mapa[$mime]) || ($esAvatar && $mapa[$mime][1] !== 'imagen')) {
+    responder(['ok' => false, 'error' => $esAvatar ? 'Solo se aceptan fotos JPG, PNG, WEBP o GIF.' : 'Solo se aceptan fotos (JPG, PNG, WEBP, GIF) y videos (MP4, WEBM, MOV).'], 400);
 }
 $ext = $mapa[$mime][0];
 $tipo = $mapa[$mime][1];
