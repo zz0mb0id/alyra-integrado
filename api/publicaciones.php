@@ -16,7 +16,7 @@ require_once __DIR__ . '/../config.php';
  * arma la lista de publicaciones. Si $publicacionId viene dado, devuelve solo
  * esa (se usa tras insertar, para responder con la fila ya guardada).
  */
-function cargar_publicaciones(PDO $pdo, $yoId, $limite = 100, $publicacionId = null)
+function cargar_publicaciones(PDO $pdo, $yoId, $limite = 100, $publicacionId = null, $autorId = null)
 {
     $yoId = (int)$yoId;
     $sql = 'SELECT p.id, p.usuario_id, p.texto, p.tipo_media, p.valor_media,
@@ -33,10 +33,16 @@ function cargar_publicaciones(PDO $pdo, $yoId, $limite = 100, $publicacionId = n
     // Las publicaciones son públicas para cualquier visitante del feed.
     // es_privado controla la visibilidad del perfil, no la de sus publicaciones.
     $parametros = [$yoId, $yoId];
+    $condiciones = [];
     if ($publicacionId !== null) {
-        $sql .= ' WHERE p.id = ?';
+        $condiciones[] = 'p.id = ?';
         $parametros[] = (int)$publicacionId;
     }
+    if ($autorId !== null) {
+        $condiciones[] = 'p.usuario_id = ?';
+        $parametros[] = (int)$autorId;
+    }
+    if ($condiciones) $sql .= ' WHERE ' . implode(' AND ', $condiciones);
     $sql .= ' ORDER BY p.creado_en DESC, p.id DESC LIMIT ' . (int)$limite;
 
     $stmt = $pdo->prepare($sql);
@@ -85,7 +91,15 @@ $metodo = isset($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : 'GET'
 
 if ($metodo === 'GET') {
     $yo = usuario_actual($pdo);
-    $lista = cargar_publicaciones($pdo, $yo ? $yo['id'] : 0, 100);
+    $autorId = null;
+    if (isset($_GET['usuario_id'])) {
+        $autorRaw = (string)$_GET['usuario_id'];
+        if (!ctype_digit($autorRaw) || (int)$autorRaw < 1) {
+            responder(['ok' => false, 'error' => 'Perfil no válido.'], 400);
+        }
+        $autorId = (int)$autorRaw;
+    }
+    $lista = cargar_publicaciones($pdo, $yo ? $yo['id'] : 0, 100, null, $autorId);
     responder(['ok' => true, 'publicaciones' => $lista]);
 }
 

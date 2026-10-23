@@ -18,7 +18,7 @@ try {
     $excluir = $yo ? (int)$yo['id'] : 0;
 
     $stmt = $pdo->prepare(
-        "SELECT u.id, u.nombre, u.bio, u.color_acento, (u.foto_perfil IS NOT NULL AND u.foto_perfil <> '') AS tiene_avatar,
+        "SELECT u.id, u.nombre, u.usuario, u.bio, u.color_acento, (u.foto_perfil IS NOT NULL AND u.foto_perfil <> '') AS tiene_avatar,
                 (SELECT COUNT(*) FROM publicaciones p WHERE p.usuario_id = u.id) AS publicaciones
            FROM usuarios u
           WHERE u.id <> ? AND u.es_privado = 0
@@ -28,7 +28,9 @@ try {
     $stmt->execute([$excluir]);
     foreach ($stmt->fetchAll() as $fila) {
         $sugeridos[] = [
+            'id' => (int)$fila['id'],
             'name' => $fila['nombre'],
+            'handle' => $fila['usuario'],
             'desc' => $fila['bio'] ? mb_substr($fila['bio'], 0, 70)
                    : ((int)$fila['publicaciones'] > 0
                         ? (int)$fila['publicaciones'] . ' publicaciones'

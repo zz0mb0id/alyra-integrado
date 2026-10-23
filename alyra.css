@@ -3126,3 +3126,46 @@ body { letter-spacing: -.008em; }
   .profile-photo-editor { align-items:flex-start; }
   .profile-photo-preview { flex-basis:66px; width:66px; height:66px; }
 }
+
+
+/* Los autores de publicaciones y sugerencias abren su perfil público. */
+.profile-open-avatar,
+.profile-open-info,
+.profile-name-link {
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+.profile-open-avatar {
+    display: inline-flex;
+    flex-shrink: 0;
+    border-radius: 50%;
+    line-height: 0;
+}
+.profile-open-avatar:focus-visible,
+.profile-open-info:focus-visible,
+.profile-name-link:focus-visible {
+    outline: 2px solid var(--hoja-700);
+    outline-offset: 3px;
+}
+.profile-open-info {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+    text-align: left;
+}
+.profile-open-info:hover .n,
+.profile-name-link:hover {
+    color: var(--hoja-700);
+}
+.post-head .profile-name-link {
+    display: block;
+    text-align: left;
+    font-weight: 600;
+    font-size: 14.5px;
+    color: var(--tinta);
+}

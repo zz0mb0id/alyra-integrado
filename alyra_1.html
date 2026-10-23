@@ -131,7 +131,7 @@
             <div class="avatar" id="topbar-avatar"></div>
           </button>
           <div id="avatar-menu" class="avatar-menu hidden">
-            <button onclick="navigateTo('profile'); closeAvatarMenu();">Ver perfil</button>
+            <button onclick="openOwnProfile(); closeAvatarMenu();">Ver perfil</button>
             <button onclick="navigateTo('settings'); closeAvatarMenu();">Configuración</button>
             <button class="danger" onclick="handleLogout()">Cerrar sesión</button>
           </div>
@@ -240,7 +240,7 @@
 
     <!-- ---- PROFILE (estilo blog de Tumblr) ---- -->
     <div id="profile-view" class="hidden">
-      <button class="btn btn-ghost btn-small back-btn" onclick="navigateTo('home')">← Volver al inicio</button>
+      <button id="profile-back-button" class="btn btn-ghost btn-small back-btn" onclick="backFromProfile()">← Volver al inicio</button>
       <div class="profile-cover" id="profile-cover">
         <div class="profile-cover-avatar" id="profile-cover-avatar"></div>
       </div>
@@ -249,7 +249,7 @@
         <div class="hint" id="profile-handle-big"></div>
         <p class="profile-bio" id="profile-bio-big"></p>
         <div class="profile-stats-row escalona" id="profile-stats-row"></div>
-        <button class="btn btn-solid btn-small" onclick="navigateTo('settings')">Editar perfil</button>
+        <button id="profile-edit-button" class="btn btn-solid btn-small" onclick="navigateTo('settings')">Editar perfil</button>
       </div>
       <div class="profile-tabs">
         <button id="ptab-posts" class="active" onclick="switchProfileTab('posts')">Publicaciones</button>
@@ -312,7 +312,7 @@
 
     <!-- ---- SETTINGS ---- -->
     <div id="settings-view" class="hidden">
-      <button class="btn btn-ghost btn-small back-btn" onclick="navigateTo('profile')">← Volver al perfil</button>
+      <button class="btn btn-ghost btn-small back-btn" onclick="openOwnProfile()">← Volver al perfil</button>
       <h2 style="margin:0 0 20px;">Configuración</h2>
       <div class="settings-grid">
         <div class="side-card">
@@ -484,6 +484,13 @@ conectada a MySQL. Sin ese backend, Alyra muestra un error y no guarda localment
     var currentView = "feed";
     var currentRoute = "home";
     var currentProfileTab = "posts";
+    var profileUser = null;
+    var profilePosts = null;
+    var profilePrivado = false;
+    var profileLoading = false;
+    var profileLoadError = "";
+    var profileReturnRoute = "home";
+    var profileRequestId = 0;
     var avatarPendiente = null;
     var avatarPreviewUrl = null;
     var quitarAvatarPendiente = false;
@@ -805,7 +812,7 @@ conectada a MySQL. Sin ese backend, Alyra muestra un error y no guarda localment
     }
     /* ---------------- navegación entre vistas ---------------- */
     function navigateTo(route) {
-      if ((route === "profile" || route === "settings") && !currentUser) {
+      if (((route === "profile" && !profileUser) || route === "settings") && !currentUser) {
         openAuth("Ingresa para ver tu perfil.", function () { navigateTo(route); }, "login");
         return;
       }
@@ -823,6 +830,75 @@ conectada a MySQL. Sin ese backend, Alyra muestra un error y no guarda localment
       if (route === "profile") renderProfileView();
       if (route === "settings") renderSettingsView();
       window.scrollTo({ top: 0, behavior: "instant" });
+    }
+    function openOwnProfile() {
+      profileRequestId++;
+      profileUser = null;
+      profilePosts = null;
+      profilePrivado = false;
+      profileLoading = false;
+      profileLoadError = "";
+      currentProfileTab = "posts";
+      if (currentRoute !== "profile") profileReturnRoute = currentRoute;
+      navigateTo("profile");
+    }
+    function openPublicProfile(id) {
+      var userId = Number(id);
+      if (!isFinite(userId) || userId < 1) return;
+      if (currentUser && Number(currentUser.id) === userId) {
+        openOwnProfile();
+        return;
+      }
+      if (currentRoute !== "profile") profileReturnRoute = currentRoute;
+      var requestId = ++profileRequestId;
+      profileUser = { id: userId, name: "Cargando perfil…", handle: "", bio: "", accent: "musgo", avatar: "" };
+      profilePosts = [];
+      profilePrivado = false;
+      profileLoading = true;
+      profileLoadError = "";
+      currentProfileTab = "posts";
+      navigateTo("profile");
+      if (!MODO_API) {
+        profileLoading = false;
+        profileLoadError = "No se pudo conectar con el servidor para cargar este perfil.";
+        renderProfileView();
+        return;
+      }
+      apiFetch("api/perfil_publico.php?id=" + encodeURIComponent(userId))
+        .then(function (d) {
+          if (requestId !== profileRequestId) return;
+          profileUser = d.perfil;
+          profilePrivado = !!d.privado;
+          if (profilePrivado) {
+            profilePosts = [];
+            profileLoading = false;
+            renderProfileView();
+            return;
+          }
+          return apiFetch("api/publicaciones.php?usuario_id=" + encodeURIComponent(userId))
+            .then(function (resultado) {
+              if (requestId !== profileRequestId) return;
+              profilePosts = resultado.publicaciones || [];
+              profileLoading = false;
+              renderProfileView();
+            });
+        })
+        .catch(function (error) {
+          if (requestId !== profileRequestId) return;
+          profileLoading = false;
+          profileLoadError = error && error.message ? error.message : "No se pudo cargar este perfil.";
+          renderProfileView();
+        });
+    }
+    function backFromProfile() {
+      profileRequestId++;
+      var ruta = profileReturnRoute || "home";
+      profileUser = null;
+      profilePosts = null;
+      profilePrivado = false;
+      profileLoading = false;
+      profileLoadError = "";
+      navigateTo(ruta);
     }
     /* ---------------- juego: carga y diagnóstico ---------------- */
     function gameMsg(html) {
@@ -951,9 +1027,16 @@ conectada a MySQL. Sin ese backend, Alyra muestra un error y no guarda localment
         return;
       }
       el.innerHTML = suggested.map(function (s) {
+        var userId = Number(s.id) || 0;
+        var avatar = '<span class="avatar" style="background:' + colorFor(s.accent ? { accent: s.accent } : s.name) + '">' + avatarContent(s) + '</span>';
+        var identidad = '<span class="n">' + esc(s.name) + '</span><span class="d">' + esc(s.desc) + '</span>';
         return '<div class="suggest-row">' +
-          '<div class="avatar" style="background:' + colorFor(s.accent ? { accent: s.accent } : s.name) + '">' + avatarContent(s) + '</div>' +
-          '<div class="info"><div class="n">' + esc(s.name) + '</div><div class="d">' + esc(s.desc) + '</div></div>' +
+          (userId > 0
+            ? '<button class="profile-open-avatar" type="button" aria-label="Ver perfil de ' + esc(s.name) + '" onclick="openPublicProfile(' + userId + ')">' + avatar + '</button>'
+            : avatar) +
+          (userId > 0
+            ? '<button class="profile-open-info info" type="button" onclick="openPublicProfile(' + userId + ')">' + identidad + '</button>'
+            : '<div class="info">' + identidad + '</div>') +
           '<button class="btn btn-ghost btn-small" data-seguir="' + esc(s.name) + '" onclick="followUser(this.dataset.seguir)">Seguir</button>' +
           '</div>';
       }).join("");
@@ -1014,10 +1097,19 @@ conectada a MySQL. Sin ese backend, Alyra muestra un error y no guarda localment
         var r = rampFor(t);
         return '<span class="tag" style="background:var(--' + r + '-100);color:var(--' + r + '-700);">#' + esc(t) + '</span>';
       }).join("");
+      var authorId = Number(p.authorId) || 0;
+      var authorLabel = esc(p.author);
+      var authorAvatar = '<span class="avatar" style="width:38px;height:38px;font-size:13px;background:' + colorFor(p.accent ? { accent: p.accent } : p.author) + '">' + avatarContent({ name: p.author, avatar: p.authorAvatar }) + '</span>';
+      var avatarMarkup = authorId > 0
+        ? '<button class="profile-open-avatar" type="button" aria-label="Ver perfil de ' + authorLabel + '" onclick="openPublicProfile(' + authorId + ')">' + authorAvatar + '</button>'
+        : authorAvatar;
+      var authorName = authorId > 0
+        ? '<button class="profile-name-link" type="button" onclick="openPublicProfile(' + authorId + ')">' + authorLabel + '</button>'
+        : '<div class="name">' + authorLabel + '</div>';
       return '<div class="post-card" style="border-left-color:var(--' + cat + '-500);">' +
         '<div class="post-head">' +
-        '<div class="avatar" style="width:38px;height:38px;font-size:13px;background:' + colorFor(p.accent ? { accent: p.accent } : p.author) + '">' + avatarContent({ name: p.author, avatar: p.authorAvatar }) + '</div>' +
-        '<div class="who"><div class="name">' + esc(p.author) + '</div><div class="meta">' + esc(p.handle) + ' · ' + esc(p.time) + '</div></div>' +
+        avatarMarkup +
+        '<div class="who">' + authorName + '<div class="meta">' + esc(p.handle) + ' · ' + esc(p.time) + '</div></div>' +
         '</div>' +
         mediaBlock +
         bodyBlock +
@@ -1314,22 +1406,47 @@ conectada a MySQL. Sin ese backend, Alyra muestra un error y no guarda localment
     }
     /* ---------------- vista de perfil (estilo blog de Tumblr) ---------------- */
     function renderProfileView() {
+      var perfil = profileUser || currentUser;
+      if (!perfil) return;
+      var esMio = !!currentUser && Number(perfil.id) === Number(currentUser.id);
+      var privado = !esMio && (profilePrivado || !!perfil.isPrivate);
+      var acento = perfil.accent || "musgo";
       var cover = document.getElementById("profile-cover");
-      cover.style.background = "var(--" + currentUser.accent + "-500)";
+      cover.style.background = "var(--" + acento + "-500)";
       cover.innerHTML =
-        '<div class="cover-dot" style="width:60px;height:60px;background:var(--' + currentUser.accent + '-300);top:-10px;right:60px;"></div>' +
-        '<div class="cover-dot" style="width:34px;height:34px;background:var(--' + currentUser.accent + '-700);bottom:20px;right:140px;"></div>' +
-        '<div class="profile-cover-avatar" style="background:var(--' + currentUser.accent + '-700);">' + avatarContent(currentUser) + '</div>';
-      document.getElementById("profile-name-big").textContent = currentUser.name;
-      document.getElementById("profile-handle-big").textContent = currentUser.handle + (currentUser.isPrivate ? " · perfil privado" : "");
-      document.getElementById("profile-bio-big").textContent = currentUser.bio || "Todavía no ha escrito una biografía.";
-      var myPosts = posts.filter(function (p) { return p.authorId === currentUser.id; });
-      var myImpactGiven = posts.filter(function (p) { return p.reacted; }).length;
-      var totalImpact = myPosts.reduce(function (a, p) { return a + p.impact; }, 0);
-      document.getElementById("profile-stats-row").innerHTML =
-        '<div><div class="n">' + myPosts.length + '</div><div class="l">Publicaciones</div></div>' +
-        '<div><div class="n">' + totalImpact + '</div><div class="l">Impacto recibido</div></div>' +
-        '<div><div class="n">' + myImpactGiven + '</div><div class="l">Impacto dado</div></div>';
+        '<div class="cover-dot" style="width:60px;height:60px;background:var(--' + acento + '-300);top:-10px;right:60px;"></div>' +
+        '<div class="cover-dot" style="width:34px;height:34px;background:var(--' + acento + '-700);bottom:20px;right:140px;"></div>' +
+        '<div class="profile-cover-avatar" style="background:var(--' + acento + '-700);">' + avatarContent(perfil) + '</div>';
+      document.getElementById("profile-name-big").textContent = perfil.name || "Perfil";
+      document.getElementById("profile-handle-big").textContent = (perfil.handle || "") + (privado ? " · perfil privado" : "");
+      document.getElementById("profile-bio-big").textContent = privado
+        ? "Esta cuenta es privada. Su biografía y actividad del perfil no están disponibles."
+        : (perfil.bio || "Todavía no ha escrito una biografía.");
+      document.getElementById("profile-edit-button").classList.toggle("hidden", !esMio);
+      document.getElementById("ptab-liked").classList.toggle("hidden", !esMio);
+      if (!esMio) currentProfileTab = "posts";
+      document.getElementById("ptab-posts").classList.toggle("active", currentProfileTab === "posts");
+      document.getElementById("ptab-liked").classList.toggle("active", currentProfileTab === "liked");
+
+      var stats = document.getElementById("profile-stats-row");
+      if (esMio) {
+        var propias = posts.filter(function (p) { return Number(p.authorId) === Number(currentUser.id); });
+        var impactoDado = posts.filter(function (p) { return p.reacted; }).length;
+        var impactoTotal = propias.reduce(function (a, p) { return a + Number(p.impact || 0); }, 0);
+        stats.innerHTML =
+          '<div><div class="n">' + propias.length + '</div><div class="l">Publicaciones</div></div>' +
+          '<div><div class="n">' + impactoTotal + '</div><div class="l">Impacto recibido</div></div>' +
+          '<div><div class="n">' + impactoDado + '</div><div class="l">Impacto dado</div></div>';
+      } else if (privado) {
+        stats.innerHTML = "";
+      } else {
+        var cifras = perfil.stats || {};
+        stats.innerHTML =
+          '<div><div class="n">' + Number(cifras.publicaciones || 0) + '</div><div class="l">Publicaciones</div></div>' +
+          '<div><div class="n">' + Number(cifras.impacto || 0) + '</div><div class="l">Impacto recibido</div></div>';
+      }
+      var volver = document.getElementById("profile-back-button");
+      volver.textContent = profileReturnRoute === "community" ? "← Volver a la comunidad" : "← Volver al inicio";
       renderProfileGrid();
     }
     function switchProfileTab(tab) {
@@ -1340,13 +1457,30 @@ conectada a MySQL. Sin ese backend, Alyra muestra un error y no guarda localment
     }
     function renderProfileGrid() {
       var el = document.getElementById("profile-grid");
-      var list = currentProfileTab === "posts"
-        ? posts.filter(function (p) { return p.authorId === currentUser.id; })
-        : posts.filter(function (p) { return p.reacted; });
+      var perfil = profileUser || currentUser;
+      var esMio = !!currentUser && perfil && Number(perfil.id) === Number(currentUser.id);
+      if (profileLoadError) {
+        el.innerHTML = '<div class="empty-note" role="alert" style="grid-column:1/-1;">' + esc(profileLoadError) + '</div>';
+        return;
+      }
+      if (profileLoading) {
+        el.innerHTML = '<div class="empty-note" style="grid-column:1/-1;">Cargando perfil…</div>';
+        return;
+      }
+      if (profilePrivado && !esMio) {
+        el.innerHTML = '<div class="empty-note" style="grid-column:1/-1;">Este perfil es privado. Puedes volver y explorar otras cuentas de Alyra.</div>';
+        return;
+      }
+      var list = esMio
+        ? (currentProfileTab === "posts"
+          ? posts.filter(function (p) { return Number(p.authorId) === Number(currentUser.id); })
+          : posts.filter(function (p) { return p.reacted; }))
+        : (profilePosts || []);
       if (list.length === 0) {
-        el.innerHTML = '<div class="empty-note" style="grid-column:1/-1;">' +
-          (currentProfileTab === "posts" ? "Aún no has publicado nada. Comparte tu primer reciclaje." : "Todavía no le has dado impacto a ninguna publicación.") +
-          '</div>';
+        var mensaje = esMio
+          ? (currentProfileTab === "posts" ? "Aún no has publicado nada. Comparte tu primer reciclaje." : "Todavía no le has dado impacto a ninguna publicación.")
+          : "Este perfil todavía no tiene publicaciones. Cuando comparta su primera historia, aparecerá aquí.";
+        el.innerHTML = '<div class="empty-note" style="grid-column:1/-1;">' + mensaje + '</div>';
         return;
       }
       el.innerHTML = list.map(gridTileHTML).join("");
