@@ -160,3 +160,8 @@ Vercel, las rutas PHP usan el runtime configurado en `vercel.json`.
 
 Dirección de arte de **herbario botánico**: papel crema, tinta cálida, aguadas de acuarela por región y animaciones suaves. Tipografías: Fraunces, Hanken Grotesk y Caveat. El sistema de diseño (colores, radios, sombras y animaciones) vive en `herbario.css` y lo usan tanto la página principal como el juego.
 
+
+
+## Profile photo storage
+
+Profile photos are resized in the browser to a small JPEG and stored in the existing MySQL/TiDB database. Vercel serves them through `api/avatar.php`; no Function-local files or external storage bucket are required. For a database created before this change, run `migracion_foto_perfil.sql` once after the `foto_perfil` column has been added. New databases use `MEDIUMTEXT` for this column in `database.sql`.
