@@ -97,6 +97,43 @@ try {
 }
 
 
+
+// Prepara foto_perfil en la base existente sin exigir una migración manual.
+// La operación solo agrega o amplía esta columna y conserva los valores previos.
+try {
+    $leerTipoAvatar = function () use ($pdo) {
+        $q = $pdo->query(
+            "SELECT DATA_TYPE FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'usuarios'
+               AND COLUMN_NAME = 'foto_perfil' LIMIT 1"
+        );
+        return $q->fetchColumn();
+    };
+    $tipoAvatar = $leerTipoAvatar();
+    if (!$tipoAvatar) {
+        try {
+            $pdo->exec('ALTER TABLE usuarios ADD COLUMN foto_perfil MEDIUMTEXT NULL');
+        } catch (PDOException $ddlError) {
+            // Una petición simultánea pudo crearla entre la consulta y el ALTER.
+            if (!$leerTipoAvatar()) throw $ddlError;
+        }
+        $tipoAvatar = $leerTipoAvatar();
+    }
+    if ($tipoAvatar && !in_array(strtolower((string)$tipoAvatar), ['mediumtext', 'longtext'], true)) {
+        $pdo->exec('ALTER TABLE usuarios MODIFY COLUMN foto_perfil MEDIUMTEXT NULL');
+    }
+} catch (PDOException $e) {
+    http_response_code(503);
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    echo json_encode([
+        'ok' => false,
+        'error' => 'La base de datos no permitió preparar la columna de fotos. Ejecuta migracion_foto_perfil.sql en MySQL/TiDB.',
+    ]);
+    exit;
+}
+
+
 /* =============================================================================
    SESIÓN POR TOKEN (la misma para el blog y para el juego)
    -----------------------------------------------------------------------------
