@@ -61,6 +61,26 @@ if ($stmt->fetch()) {
 $acento = acento_valido($acento);
 $privado = $privado ? 1 : 0;
 
+// La columna antigua VARCHAR(300) no alcanza para la miniatura JPEG en base64.
+// Amplía solo esa columna (sin tocar sus datos) en el primer guardado de avatar.
+if (strpos($avatar, 'data:image/jpeg;base64,') === 0) {
+    try {
+        $tipoColumna = $pdo->query(
+            "SELECT DATA_TYPE FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'usuarios'
+               AND COLUMN_NAME = 'foto_perfil' LIMIT 1"
+        )->fetchColumn();
+        if (!$tipoColumna) {
+            responder(['ok' => false, 'error' => 'Falta la columna foto_perfil en usuarios. Ejecuta la migración migracion_foto_perfil.sql.'], 503);
+        }
+        if (!in_array(strtolower((string)$tipoColumna), ['mediumtext', 'longtext'], true)) {
+            $pdo->exec('ALTER TABLE usuarios MODIFY COLUMN foto_perfil MEDIUMTEXT NULL');
+        }
+    } catch (PDOException $e) {
+        responder(['ok' => false, 'error' => 'La base no permitió ampliar el espacio para fotos. Ejecuta migracion_foto_perfil.sql en MySQL/TiDB y vuelve a intentarlo.'], 503);
+    }
+}
+
 $stmt = $pdo->prepare(
     'UPDATE usuarios SET nombre = ?, usuario = ?, bio = ?, color_acento = ?, es_privado = ?, foto_perfil = ? WHERE id = ?'
 );
