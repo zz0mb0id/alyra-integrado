@@ -1998,7 +1998,7 @@ label {
     position: relative;
     margin-bottom: 58px;
     background: var(--hoja-500);
-    overflow: hidden;
+    overflow: visible;
     box-shadow: var(--sombra-sm);
     animation: aparecePapel .7s var(--ease-suave) both;
 }
@@ -2034,7 +2034,7 @@ label {
     font-size: 32px;
     color: var(--papel);
     box-shadow: var(--sombra-md);
-    animation: brote .8s var(--ease-brote) .18s both;
+    z-index: 2;\n    overflow: hidden;\n    animation: brote .8s var(--ease-brote) .18s both;
 }
 
 .profile-info-block {
