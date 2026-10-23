@@ -21,7 +21,7 @@ function cargar_publicaciones(PDO $pdo, $yoId, $limite = 100, $publicacionId = n
     $yoId = (int)$yoId;
     $sql = 'SELECT p.id, p.usuario_id, p.texto, p.tipo_media, p.valor_media,
                    p.impacto, p.comentarios, p.reblogs, p.creado_en,
-                   u.nombre AS autor, u.usuario AS handle, u.color_acento, u.foto_perfil AS avatar,
+                   u.nombre AS autor, u.usuario AS handle, u.color_acento, (u.foto_perfil IS NOT NULL AND u.foto_perfil <> '') AS tiene_avatar,
                    EXISTS(SELECT 1 FROM impactos i
                            WHERE i.publicacion_id = p.id AND i.usuario_id = ?) AS le_dio,
                    EXISTS(SELECT 1 FROM reblogs rb
@@ -63,7 +63,7 @@ function cargar_publicaciones(PDO $pdo, $yoId, $limite = 100, $publicacionId = n
             'author'       => $f['autor'],
             'handle'       => $f['handle'],
             'accent'       => acento_valido($f['color_acento']),
-            'authorAvatar' => (string)($f['avatar'] ?? ''),
+            'authorAvatar' => !empty($f['tiene_avatar']) ? 'api/avatar.php?id=' . (int)$f['usuario_id'] : '',
             'hasMedia'     => $tipo !== 'ninguno',
             'mediaKind'    => $tipo === 'ninguno' ? null : ($tipo === 'imagen' ? 'image' : ($tipo === 'video' ? 'video' : 'emoji')),
             'emoji'        => $tipo === 'emoji' ? $f['valor_media'] : null,
