@@ -3072,3 +3072,31 @@ body { letter-spacing: -.008em; }
   html { scroll-behavior: auto; }
   .blog-hero, .blog-latest .post-card, #feed-view .post-card, #grid-view .post-card, .nav-link, .brand { transition: none !important; }
 }
+
+
+/* Portada social: publicar y conversar sin salir del inicio. */
+.community-preview { max-width: 1000px; margin: 0 auto; }
+.community-preview-heading { display:flex; align-items:flex-end; justify-content:space-between; gap:28px; margin-bottom:26px; }
+.community-preview-copy { max-width:650px; }
+.community-kicker { display:flex; align-items:center; gap:9px; margin:0 0 10px; color:var(--hoja-700); font-size:12px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
+.community-live-dot { width:8px; height:8px; border-radius:50%; background:#6c9d5a; box-shadow:0 0 0 4px rgba(108,157,90,.14); }
+.community-preview-heading h2 { margin:0 0 10px; text-align:left; }
+.community-preview-copy > p:last-child { max-width:590px; margin:0; color:var(--tinta-soft); line-height:1.7; }
+.community-compose { flex:0 0 auto; min-height:48px; box-shadow:0 8px 18px rgba(50,101,57,.17); }
+.community-compose > span { margin-right:5px; font-size:20px; line-height:0; }
+.community-feed-label { display:flex; justify-content:space-between; align-items:center; gap:12px; margin:0 0 14px; padding:0 2px 12px; border-bottom:1px solid var(--alyra-line, rgba(92,112,73,.17)); color:var(--tinta-soft); font-size:13px; }
+.community-feed-label span:first-child { color:var(--hoja-900); font-weight:700; }
+.community-feed-label span:last-child { font-family:var(--f-display); font-style:italic; }
+.community-preview-list { display:grid; gap:18px; }
+.community-empty { display:grid; justify-items:center; gap:10px; padding:clamp(30px,6vw,56px) 24px; border:1px dashed rgba(92,142,75,.35); border-radius:24px; text-align:center; background:linear-gradient(145deg,rgba(255,253,247,.92),rgba(241,244,232,.72)); }
+.community-empty-icon { font-size:30px; }
+.community-empty strong { color:var(--hoja-900); font-family:var(--f-display); font-size:clamp(21px,3vw,27px); }
+.community-empty p { max-width:480px; margin:0 0 8px; color:var(--tinta-soft); }
+.community-feed-more { display:flex; justify-content:center; padding:7px 0 2px; }
+.community-feed-more .btn { min-height:46px; }
+@media (max-width:720px) {
+  .community-preview-heading { align-items:stretch; flex-direction:column; gap:18px; }
+  .community-compose { width:100%; }
+  .community-feed-label { font-size:12px; }
+  .community-empty { border-radius:19px; }
+}
